@@ -5,3 +5,5 @@ export * from './budget';
 export * from './steps';
 export * from './sources';
 export * from './plan';
+export * from './profileInput';
+export * from './goal';
