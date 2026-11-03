@@ -7,3 +7,5 @@ export * from './sources';
 export * from './plan';
 export * from './profileInput';
 export * from './goal';
+export * from './foodSearch';
+export * from './foodInput';

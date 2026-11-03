@@ -2,9 +2,11 @@ import { desc, eq, sql } from 'drizzle-orm';
 import { planDay, resolveSteps } from '../core';
 import { parseDateKey } from '../lib/dates';
 import { db } from './client';
+import { SEED_FOODS } from '../data/seed-foods';
 import {
   activities,
   foodLogs,
+  foods,
   profile,
   stepEntries,
   weightLogs,
@@ -124,4 +126,57 @@ export async function getDayPlan(date: string) {
     activityKcal: s.activityKcal,
     stepsDone,
   });
+}
+
+export async function seedFoods() {
+  const now = Date.now();
+  for (let i = 0; i < SEED_FOODS.length; i += 25) {
+    const chunk = SEED_FOODS.slice(i, i + 25).map((f) => ({
+      seedKey: f.key,
+      name: f.name,
+      category: f.category,
+      servingLabel: f.serving,
+      kcal: f.kcal,
+      isCustom: false,
+      archived: false,
+      createdAt: now,
+    }));
+    // Existing rows (including ones you edited or hid) are left untouched.
+    await db.insert(foods).values(chunk).onConflictDoNothing({ target: foods.seedKey });
+  }
+}
+
+export async function listFoods() {
+  return db.select().from(foods).where(eq(foods.archived, false)).orderBy(foods.name);
+}
+
+export async function getFood(id: number) {
+  const rows = await db.select().from(foods).where(eq(foods.id, id)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function addCustomFood(f: { name: string; servingLabel: string; kcal: number }) {
+  await db.insert(foods).values({
+    name: f.name,
+    servingLabel: f.servingLabel,
+    kcal: f.kcal,
+    category: 'custom',
+    isCustom: true,
+    archived: false,
+    createdAt: Date.now(),
+  });
+}
+
+export async function updateFood(
+  id: number,
+  f: { name: string; servingLabel: string; kcal: number },
+) {
+  await db
+    .update(foods)
+    .set({ name: f.name, servingLabel: f.servingLabel, kcal: f.kcal })
+    .where(eq(foods.id, id));
+}
+
+export async function hideFood(id: number) {
+  await db.update(foods).set({ archived: true }).where(eq(foods.id, id));
 }

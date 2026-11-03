@@ -73,6 +73,18 @@ export function PrimaryButton(props: { title: string; onPress: () => void; disab
     </Pressable>
   );
 }
+export function SecondaryButton(props: { title: string; onPress: () => void; danger?: boolean }) {
+  return (
+    <Pressable
+      onPress={props.onPress}
+      style={[s.buttonSecondary, props.danger ? s.buttonDanger : null]}
+    >
+      <Text style={[s.buttonSecondaryText, props.danger ? s.buttonDangerText : null]}>
+        {props.title}
+      </Text>
+    </Pressable>
+  );
+}
 
 const s = StyleSheet.create({
   field: { gap: 6 },
@@ -111,4 +123,15 @@ const s = StyleSheet.create({
   },
   buttonDisabled: { opacity: 0.5 },
   buttonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
+  buttonSecondary: {
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.card,
+  },
+  buttonSecondaryText: { fontSize: 16, fontWeight: '600', color: colors.text },
+  buttonDanger: { borderColor: colors.danger },
+  buttonDangerText: { color: colors.danger },
 });

@@ -5,7 +5,7 @@ import { goalOutlook, type DayPlan, type GoalOutlook, type GoalVerdict } from '.
 import { getDayPlan, getProfile, latestWeight } from '../db/repo';
 import type { Profile } from '../db/schema';
 import { dateKey, parseDateKey } from '../lib/dates';
-import { PrimaryButton } from '../ui/form';
+import { PrimaryButton, SecondaryButton} from '../ui/form';
 import { colors } from '../ui/theme';
 
 type State =
@@ -113,7 +113,8 @@ export default function Home() {
         note={`${daysLeft !== null ? `${daysLeft} days to ${profile.targetDate}.\n\n` : ''}${goalNote}`}
       />
 
-      <PrimaryButton title="Edit profile" onPress={() => router.push('/onboarding')} />
+      <PrimaryButton title="Food library" onPress={() => router.push('/foods')} />
+      <SecondaryButton title="Edit profile" onPress={() => router.push('/onboarding')} />
     </ScrollView>
   );
 }
