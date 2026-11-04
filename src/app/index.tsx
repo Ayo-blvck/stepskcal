@@ -176,6 +176,7 @@ export default function Home() {
       <SecondaryButton title="Edit profile" onPress={() => router.push('/onboarding')} />
       <SecondaryButton title="Backup and restore" onPress={() => router.push('/backup')} />
       <SecondaryButton title="Reminders" onPress={() => router.push('/reminders')} />
+      <SecondaryButton title="R0 check" onPress={() => router.push('/dev-r0')} />
     </ScrollView>
   );
 }
