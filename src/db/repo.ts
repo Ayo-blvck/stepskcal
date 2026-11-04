@@ -180,3 +180,31 @@ export async function updateFood(
 export async function hideFood(id: number) {
   await db.update(foods).set({ archived: true }).where(eq(foods.id, id));
 }
+
+export async function getFoodLog(id: number) {
+  const rows = await db.select().from(foodLogs).where(eq(foodLogs.id, id)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function updateFoodLog(
+  id: number,
+  e: { name: string; quantity: number; kcal: number },
+) {
+  await db
+    .update(foodLogs)
+    .set({ name: e.name, quantity: e.quantity, kcal: Math.round(e.kcal) })
+    .where(eq(foodLogs.id, id));
+}
+
+/** Foods you logged most recently, newest first, without duplicates. */
+export async function recentFoods(limit = 8) {
+  const rows = await db
+    .select({ food: foods })
+    .from(foodLogs)
+    .innerJoin(foods, eq(foodLogs.foodId, foods.id))
+    .where(eq(foods.archived, false))
+    .groupBy(foods.id)
+    .orderBy(desc(sql`max(${foodLogs.loggedAt})`))
+    .limit(limit);
+  return rows.map((r) => r.food);
+}

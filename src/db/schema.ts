@@ -78,3 +78,4 @@ export const activities = sqliteTable(
 export type Profile = typeof profile.$inferSelect;
 export type NewProfile = typeof profile.$inferInsert;
 export type Food = typeof foods.$inferSelect;
+export type FoodLog = typeof foodLogs.$inferSelect;
