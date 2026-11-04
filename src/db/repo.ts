@@ -1,6 +1,6 @@
 import { and, desc, eq, sql } from 'drizzle-orm';
-import { buildBackup, planDay, resolveSteps, type BackupFile } from '../core';
-import { parseDateKey } from '../lib/dates';
+import { buildBackup, planDay, resolveSteps, type BackupFile, type DaySnapshot, type ReminderContext } from '../core';
+import { parseDateKey, shiftDateKey} from '../lib/dates';
 import { db, sqlite } from './client';
 import { SEED_FOODS } from '../data/seed-foods';
 import {
@@ -381,4 +381,30 @@ export async function importAll(b: BackupFile) {
       );
     }
   });
+}
+
+export async function daySnapshot(date: string): Promise<DaySnapshot | null> {
+  const [plan, s] = await Promise.all([getDayPlan(date), daySummary(date)]);
+  if (!plan) return null;
+  return {
+    eatenKcal: s.eatenKcal,
+    allowanceKcal: plan.budgetKcal + plan.activityCreditKcal,
+    stepsDone: plan.stepsDone,
+    stepTarget: plan.stepTarget,
+    hasSteps: s.phoneSteps !== null || s.watchSteps !== null,
+  };
+}
+
+export async function getReminderContext(today: string): Promise<ReminderContext | null> {
+  const p = await getProfile();
+  const w = await latestWeight();
+  if (!p || !w) return null;
+
+  const yesterday = shiftDateKey(today, -1);
+  const [t, y] = await Promise.all([daySnapshot(today), daySnapshot(yesterday)]);
+  const days: Record<string, DaySnapshot> = {};
+  if (t) days[today] = t;
+  if (y) days[yesterday] = y;
+
+  return { kgToGoal: Math.max(0, w.weightKg - p.goalWeightKg), mode: p.mode, days };
 }

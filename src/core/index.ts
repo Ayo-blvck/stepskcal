@@ -14,3 +14,5 @@ export * from './stepsInput';
 export * from './weight';
 export * from './activity';
 export * from './backup';
+export * from './reminderSettings';
+export * from './reminders';

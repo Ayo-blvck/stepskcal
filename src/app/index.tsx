@@ -15,6 +15,7 @@ import { colors } from '../ui/theme';
 import { StepsCard } from '../ui/StepsCard';
 import { ActivityCard } from '../ui/ActivityCard';
 import { BackupNudge } from '../ui/BackupNudge';
+import { refreshReminders } from '../lib/notifications';
 
 type State =
   | { status: 'loading' }
@@ -70,6 +71,7 @@ export default function Home() {
             ? { status: 'ready', plan, profile, weightKg: weight.weightKg, logs }
             : { status: 'none' },
         );
+        refreshReminders();
       })();
       return () => {
         active = false;
@@ -173,6 +175,7 @@ export default function Home() {
       <SecondaryButton title="Food library" onPress={() => router.push('/foods')} />
       <SecondaryButton title="Edit profile" onPress={() => router.push('/onboarding')} />
       <SecondaryButton title="Backup and restore" onPress={() => router.push('/backup')} />
+      <SecondaryButton title="Reminders" onPress={() => router.push('/reminders')} />
     </ScrollView>
   );
 }
