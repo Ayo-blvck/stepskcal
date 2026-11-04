@@ -4,20 +4,20 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import {
   formatQuantity,
   goalOutlook,
-  type DayPlan,
   type GoalOutlook,
   type GoalVerdict,
 } from '../core';
-import { getDayPlan, getProfile, latestWeight, listFoodLogs } from '../db/repo';
+import { getDayPlan, getProfile, latestWeight, listFoodLogs, type DayPlanView } from '../db/repo';
 import type { FoodLog, Profile } from '../db/schema';
 import { dateKey, parseDateKey } from '../lib/dates';
 import { PrimaryButton, SecondaryButton } from '../ui/form';
 import { colors } from '../ui/theme';
+import { StepsCard } from '../ui/StepsCard';
 
 type State =
   | { status: 'loading' }
   | { status: 'none' }
-  | { status: 'ready'; plan: DayPlan; profile: Profile; weightKg: number; logs: FoodLog[] };
+  | { status: 'ready'; plan: DayPlanView; profile: Profile; weightKg: number; logs: FoodLog[] };
 
 const VERDICT: Record<GoalVerdict, string> = {
   reached: 'Reached',
@@ -120,6 +120,12 @@ export default function Home() {
       <Text style={s.title}>Today</Text>
 
       <Card label="Step target" value={`${n(plan.stepTarget)} steps`} note={stepNote} />
+      <StepsCard
+        done={plan.stepsDone}
+        target={plan.stepTarget}
+        watch={plan.watchSteps}
+        phone={plan.phoneSteps}
+      />
 
       <PrimaryButton title="Log food" onPress={() => router.push('/log')} />
 

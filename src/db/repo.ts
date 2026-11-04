@@ -1,4 +1,4 @@
-import { desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import { planDay, resolveSteps } from '../core';
 import { parseDateKey } from '../lib/dates';
 import { db } from './client';
@@ -112,7 +112,7 @@ export async function getDayPlan(date: string) {
   const s = await daySummary(date);
   const stepsDone = resolveSteps({ phone: s.phoneSteps, watch: s.watchSteps, strategy: p.stepStrategy });
 
-  return planDay({
+  const plan = planDay({
     sex: p.sex,
     birthDate: p.birthDate,
     heightCm: p.heightCm,
@@ -126,7 +126,11 @@ export async function getDayPlan(date: string) {
     activityKcal: s.activityKcal,
     stepsDone,
   });
+
+  return { ...plan, stepsDone, phoneSteps: s.phoneSteps, watchSteps: s.watchSteps };
 }
+
+export type DayPlanView = NonNullable<Awaited<ReturnType<typeof getDayPlan>>>;
 
 export async function seedFoods() {
   const now = Date.now();
@@ -207,4 +211,18 @@ export async function recentFoods(limit = 8) {
     .orderBy(desc(sql`max(${foodLogs.loggedAt})`))
     .limit(limit);
   return rows.map((r) => r.food);
+}
+
+export async function getStepEntries(date: string) {
+  const rows = await db.select().from(stepEntries).where(eq(stepEntries.date, date));
+  return {
+    phone: rows.find((r) => r.source === 'phone')?.steps ?? null,
+    watch: rows.find((r) => r.source === 'watch')?.steps ?? null,
+  };
+}
+
+export async function clearSteps(date: string, source: 'phone' | 'watch') {
+  await db
+    .delete(stepEntries)
+    .where(and(eq(stepEntries.date, date), eq(stepEntries.source, source)));
 }
