@@ -76,8 +76,14 @@ export const activities = sqliteTable(
   (t) => [index('activities_date_idx').on(t.date)],
 );
 
+export const kv = sqliteTable('kv', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(),
+});
+
 export type Profile = typeof profile.$inferSelect;
 export type NewProfile = typeof profile.$inferInsert;
 export type Food = typeof foods.$inferSelect;
 export type FoodLog = typeof foodLogs.$inferSelect;
 export type Activity = typeof activities.$inferSelect;
+export type Kv = typeof kv.$inferSelect;

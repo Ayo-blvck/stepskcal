@@ -14,6 +14,7 @@ import { PrimaryButton, SecondaryButton } from '../ui/form';
 import { colors } from '../ui/theme';
 import { StepsCard } from '../ui/StepsCard';
 import { ActivityCard } from '../ui/ActivityCard';
+import { BackupNudge } from '../ui/BackupNudge';
 
 type State =
   | { status: 'loading' }
@@ -119,6 +120,7 @@ export default function Home() {
   return (
     <ScrollView style={{ backgroundColor: colors.bg }} contentContainerStyle={s.page}>
       <Text style={s.title}>Today</Text>
+      <BackupNudge profileCreatedAt={profile.createdAt} />
 
       <Card label="Step target" value={`${n(plan.stepTarget)} steps`} note={stepNote} />
       <StepsCard
@@ -170,6 +172,7 @@ export default function Home() {
       <SecondaryButton title="Weight and progress" onPress={() => router.push('/weight')} />
       <SecondaryButton title="Food library" onPress={() => router.push('/foods')} />
       <SecondaryButton title="Edit profile" onPress={() => router.push('/onboarding')} />
+      <SecondaryButton title="Backup and restore" onPress={() => router.push('/backup')} />
     </ScrollView>
   );
 }

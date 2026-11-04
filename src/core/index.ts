@@ -13,3 +13,4 @@ export * from './logInput';
 export * from './stepsInput';
 export * from './weight';
 export * from './activity';
+export * from './backup';

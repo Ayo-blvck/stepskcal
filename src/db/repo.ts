@@ -1,12 +1,13 @@
 import { and, desc, eq, sql } from 'drizzle-orm';
-import { planDay, resolveSteps } from '../core';
+import { buildBackup, planDay, resolveSteps, type BackupFile } from '../core';
 import { parseDateKey } from '../lib/dates';
-import { db } from './client';
+import { db, sqlite } from './client';
 import { SEED_FOODS } from '../data/seed-foods';
 import {
   activities,
   foodLogs,
   foods,
+  kv,
   profile,
   stepEntries,
   weightLogs,
@@ -286,4 +287,98 @@ export async function updateActivity(
 
 export async function deleteActivity(id: number) {
   await db.delete(activities).where(eq(activities.id, id));
+}
+
+export async function getKv(key: string) {
+  const rows = await db.select().from(kv).where(eq(kv.key, key)).limit(1);
+  return rows[0]?.value ?? null;
+}
+
+export async function setKv(key: string, value: string) {
+  await db.insert(kv).values({ key, value }).onConflictDoUpdate({ target: kv.key, set: { value } });
+}
+
+export async function exportAll(): Promise<BackupFile> {
+  const [p, f, fl, st, w, a] = await Promise.all([
+    db.select().from(profile),
+    db.select().from(foods),
+    db.select().from(foodLogs),
+    db.select().from(stepEntries),
+    db.select().from(weightLogs),
+    db.select().from(activities),
+  ]);
+  return buildBackup(
+    { profile: p, foods: f, foodLogs: fl, stepEntries: st, weightLogs: w, activities: a },
+    new Date(),
+  );
+}
+
+function chunk<T>(items: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+  return out;
+}
+
+/** Replaces all user data with the backup. Runs as one transaction, so a failure changes nothing. */
+export async function importAll(b: BackupFile) {
+  await sqlite.withTransactionAsync(async () => {
+    await db.delete(foodLogs);
+    await db.delete(activities);
+    await db.delete(stepEntries);
+    await db.delete(weightLogs);
+    await db.delete(profile);
+    await db.delete(foods).where(eq(foods.isCustom, true));
+
+    const existing = await db.select().from(foods);
+    const bySeed = new Map<string, number>();
+    for (const f of existing) if (f.seedKey) bySeed.set(f.seedKey, f.id);
+    let nextId = existing.reduce((m, f) => Math.max(m, f.id), 0) + 1;
+
+    const idMap = new Map<number, number>();
+    for (const f of b.data.foods) {
+      const fields = {
+        name: f.name,
+        category: f.category,
+        servingLabel: f.servingLabel,
+        kcal: f.kcal,
+        archived: f.archived,
+      };
+      const existingId = f.seedKey ? bySeed.get(f.seedKey) : undefined;
+      if (existingId !== undefined) {
+        await db.update(foods).set(fields).where(eq(foods.id, existingId));
+        idMap.set(f.id, existingId);
+      } else {
+        const id = nextId++;
+        await db.insert(foods).values({
+          id,
+          ...fields,
+          seedKey: f.seedKey,
+          isCustom: f.isCustom,
+          createdAt: f.createdAt,
+        });
+        idMap.set(f.id, id);
+      }
+    }
+
+    for (const p of b.data.profile) {
+      await db.insert(profile).values({ ...p, id: 1 });
+    }
+    for (const rows of chunk(b.data.weightLogs, 50)) {
+      await db.insert(weightLogs).values(rows.map(({ id, ...r }) => r));
+    }
+    for (const rows of chunk(b.data.stepEntries, 50)) {
+      await db.insert(stepEntries).values(rows.map(({ id, ...r }) => r));
+    }
+    for (const rows of chunk(b.data.activities, 50)) {
+      await db.insert(activities).values(rows.map(({ id, ...r }) => r));
+    }
+    for (const rows of chunk(b.data.foodLogs, 50)) {
+      await db.insert(foodLogs).values(
+        rows.map(({ id, foodId, ...r }) => ({
+          ...r,
+          foodId: foodId === null ? null : (idMap.get(foodId) ?? null),
+        })),
+      );
+    }
+  });
 }

@@ -11,7 +11,7 @@ import {
 } from '../core';
 import { getProfile, latestWeight, logWeight, saveProfile } from '../db/repo';
 import { dateKey } from '../lib/dates';
-import { Field, PrimaryButton, Segmented } from '../ui/form';
+import { Field, PrimaryButton, SecondaryButton, Segmented } from '../ui/form';
 import { colors } from '../ui/theme';
 
 export default function Onboarding() {
@@ -78,6 +78,9 @@ export default function Onboarding() {
         These numbers stay on your phone. They are used to estimate how many calories your body
         uses and how many steps you need each day.
       </Text>
+            {!editing ? (
+        <SecondaryButton title="I already have a backup file" onPress={() => router.push('/backup')} />
+      ) : null}
 
       <Text style={s.section}>About you</Text>
       <Segmented
