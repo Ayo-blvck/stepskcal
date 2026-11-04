@@ -11,3 +11,4 @@ export * from './foodSearch';
 export * from './foodInput';
 export * from './logInput';
 export * from './stepsInput';
+export * from './weight';

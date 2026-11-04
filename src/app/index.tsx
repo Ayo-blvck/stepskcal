@@ -164,7 +164,7 @@ export default function Home() {
         value={`${weightKg} kg → ${profile.goalWeightKg} kg`}
         note={`${daysLeft !== null ? `${daysLeft} days to ${profile.targetDate}.\n\n` : ''}${goalNote}`}
       />
-
+      <SecondaryButton title="Weight and progress" onPress={() => router.push('/weight')} />
       <SecondaryButton title="Food library" onPress={() => router.push('/foods')} />
       <SecondaryButton title="Edit profile" onPress={() => router.push('/onboarding')} />
     </ScrollView>

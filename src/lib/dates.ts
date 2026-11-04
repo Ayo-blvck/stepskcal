@@ -14,3 +14,10 @@ export function shiftDateKey(key: string, days: number): string {
   d.setDate(d.getDate() + days);
   return dateKey(d);
 }
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+export function formatShort(key: string, withYear = false): string {
+  const [y, m, d] = key.split('-').map(Number);
+  return `${d} ${MONTHS[m - 1]}${withYear ? ` ${y}` : ''}`;
+}

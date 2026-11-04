@@ -226,3 +226,15 @@ export async function clearSteps(date: string, source: 'phone' | 'watch') {
     .delete(stepEntries)
     .where(and(eq(stepEntries.date, date), eq(stepEntries.source, source)));
 }
+
+export async function listWeights() {
+  return db.select().from(weightLogs).orderBy(weightLogs.date);
+}
+
+export async function deleteWeight(date: string) {
+  await db.delete(weightLogs).where(eq(weightLogs.date, date));
+}
+
+export async function setMode(mode: 'lose' | 'maintain') {
+  await db.update(profile).set({ mode }).where(eq(profile.id, 1));
+}
