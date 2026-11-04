@@ -74,12 +74,19 @@ export async function listFoodLogs(date: string) {
   return db.select().from(foodLogs).where(eq(foodLogs.date, date)).orderBy(foodLogs.loggedAt);
 }
 
-export async function addActivity(e: { date: string; name: string; kcal: number; durationMin?: number }) {
+export async function addActivity(e: {
+  date: string;
+  name: string;
+  kcal: number;
+  durationMin?: number | null;
+  stepsCounted?: number | null;
+}) {
   await db.insert(activities).values({
     date: e.date,
     name: e.name,
     kcal: Math.round(e.kcal),
     durationMin: e.durationMin ?? null,
+    stepsCounted: e.stepsCounted ?? null,
     createdAt: Date.now(),
   });
 }
@@ -89,15 +96,13 @@ export async function daySummary(date: string) {
     .select({ total: sql<number>`coalesce(sum(${foodLogs.kcal}), 0)` })
     .from(foodLogs)
     .where(eq(foodLogs.date, date));
-  const [act] = await db
-    .select({ total: sql<number>`coalesce(sum(${activities.kcal}), 0)` })
-    .from(activities)
-    .where(eq(activities.date, date));
+  const acts = await db.select().from(activities).where(eq(activities.date, date));
   const steps = await db.select().from(stepEntries).where(eq(stepEntries.date, date));
 
   return {
     eatenKcal: Number(food?.total ?? 0),
-    activityKcal: Number(act?.total ?? 0),
+    activityKcal: acts.reduce((sum, a) => sum + a.kcal, 0),
+    activities: acts.map((a) => ({ kcal: a.kcal, stepsCounted: a.stepsCounted ?? 0 })),
     phoneSteps: steps.find((s) => s.source === 'phone')?.steps ?? null,
     watchSteps: steps.find((s) => s.source === 'watch')?.steps ?? null,
   };
@@ -124,6 +129,7 @@ export async function getDayPlan(date: string) {
     date: parseDateKey(date),
     eatenKcal: s.eatenKcal,
     activityKcal: s.activityKcal,
+    activities: s.activities,
     stepsDone,
   });
 
@@ -237,4 +243,47 @@ export async function deleteWeight(date: string) {
 
 export async function setMode(mode: 'lose' | 'maintain') {
   await db.update(profile).set({ mode }).where(eq(profile.id, 1));
+}
+
+export async function listActivities(date: string) {
+  return db.select().from(activities).where(eq(activities.date, date)).orderBy(activities.createdAt);
+}
+
+export async function listRecentActivities(limit = 10) {
+  return db
+    .select()
+    .from(activities)
+    .orderBy(desc(activities.date), desc(activities.createdAt))
+    .limit(limit);
+}
+
+export async function getActivity(id: number) {
+  const rows = await db.select().from(activities).where(eq(activities.id, id)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function updateActivity(
+  id: number,
+  e: {
+    date: string;
+    name: string;
+    kcal: number;
+    durationMin: number | null;
+    stepsCounted: number | null;
+  },
+) {
+  await db
+    .update(activities)
+    .set({
+      date: e.date,
+      name: e.name,
+      kcal: Math.round(e.kcal),
+      durationMin: e.durationMin,
+      stepsCounted: e.stepsCounted,
+    })
+    .where(eq(activities.id, id));
+}
+
+export async function deleteActivity(id: number) {
+  await db.delete(activities).where(eq(activities.id, id));
 }

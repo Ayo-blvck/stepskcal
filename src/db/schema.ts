@@ -70,6 +70,7 @@ export const activities = sqliteTable(
     name: text('name').notNull(),
     kcal: integer('kcal').notNull(),
     durationMin: integer('duration_min'),
+    stepsCounted: integer('steps_counted'),
     createdAt: integer('created_at').notNull(),
   },
   (t) => [index('activities_date_idx').on(t.date)],
@@ -79,3 +80,4 @@ export type Profile = typeof profile.$inferSelect;
 export type NewProfile = typeof profile.$inferInsert;
 export type Food = typeof foods.$inferSelect;
 export type FoodLog = typeof foodLogs.$inferSelect;
+export type Activity = typeof activities.$inferSelect;

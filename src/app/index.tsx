@@ -13,6 +13,7 @@ import { dateKey, parseDateKey } from '../lib/dates';
 import { PrimaryButton, SecondaryButton } from '../ui/form';
 import { colors } from '../ui/theme';
 import { StepsCard } from '../ui/StepsCard';
+import { ActivityCard } from '../ui/ActivityCard';
 
 type State =
   | { status: 'loading' }
@@ -132,8 +133,8 @@ export default function Home() {
       <Card
         label="Food today"
         value={left >= 0 ? `${n(left)} kcal left` : `${n(-left)} kcal over`}
-        note={`Eaten ${n(eaten)} of ${n(plan.budgetKcal)} kcal budget. Maintenance is ${n(plan.maintenanceKcal)} kcal minus a ${plan.effectiveDeficitKcal} kcal deficit${plan.limitedByFloor ? ' (held at the calorie floor)' : ''}.`}
-      >
+        note={`Eaten ${n(eaten)} of ${n(plan.budgetKcal + plan.activityCreditKcal)} kcal${plan.activityCreditKcal > 0 ? ` (budget ${n(plan.budgetKcal)} + ${n(plan.activityCreditKcal)} from activity)` : ' budget'}. Maintenance is ${n(plan.maintenanceKcal)} kcal minus a ${plan.effectiveDeficitKcal} kcal deficit${plan.limitedByFloor ? ' (held at the calorie floor)' : ''}.`}
+        >
         {logs.length === 0 ? (
           <Text style={s.cardNote}>Nothing logged yet.</Text>
         ) : (
@@ -159,6 +160,8 @@ export default function Home() {
         )}
       </Card>
 
+      <ActivityCard creditKcal={plan.activityCreditKcal} />
+      
       <Card
         label="Goal"
         value={`${weightKg} kg → ${profile.goalWeightKg} kg`}
