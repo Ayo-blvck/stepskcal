@@ -1,9 +1,12 @@
+import { light } from './tokens';
+
+/** Legacy palette for screens that do not use useTheme() yet. */
 export const colors = {
-  bg: '#F7F7F5',
-  card: '#FFFFFF',
-  text: '#111111',
-  muted: '#666666',
-  border: '#D9D9D4',
-  primary: '#1B7F4B',
-  danger: '#C0392B',
+  bg: light.bg,
+  card: light.card,
+  text: light.text,
+  muted: light.muted,
+  border: light.border,
+  primary: light.primary,
+  danger: light.danger,
 };

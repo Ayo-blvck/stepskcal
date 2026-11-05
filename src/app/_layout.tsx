@@ -11,9 +11,19 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { DatabaseProvider } from '../db/DatabaseProvider';
 import '../lib/notifications';
-import { colors } from '../ui/theme';
+import { ThemeProvider, useTheme } from '../ui/ThemeProvider';
 
 SplashScreen.preventAutoHideAsync();
+
+function Shell() {
+  const t = useTheme();
+  return (
+    <>
+      <StatusBar style={t.mode === 'dark' ? 'light' : 'dark'} />
+      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: t.bg } }} />
+    </>
+  );
+}
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
@@ -31,8 +41,9 @@ export default function RootLayout() {
 
   return (
     <DatabaseProvider>
-      <StatusBar style="dark" />
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }} />
+      <ThemeProvider>
+        <Shell />
+      </ThemeProvider>
     </DatabaseProvider>
   );
 }
