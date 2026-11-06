@@ -244,14 +244,6 @@ export default function Today() {
       </Card>
 
       <ActivityCard items={activities} creditKcal={plan.activityCreditKcal} />
-
-      {/* Temporary: these move into Foods (R4) and Profile & data (R8). */}
-      <AppText variant="caption" tone="muted" style={{ marginTop: 8 }}>
-        More
-      </AppText>
-      <Button title="Edit profile" variant="secondary" onPress={() => router.push('/onboarding')} />
-      <Button title="Backup and restore" variant="secondary" onPress={() => router.push('/backup')} />
-      <Button title="R1 check" variant="secondary" onPress={() => router.push('/dev-r1')} />
     </ScrollView>
   );
 }
