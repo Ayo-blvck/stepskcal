@@ -1,4 +1,5 @@
 import { isValidDateKey } from './profileInput';
+import { ACTIVITY_CREDIT } from './constants';
 
 export interface ActivityPreset {
   key: string;
@@ -96,4 +97,18 @@ export function validateActivityEntry(f: ActivityForm, today: Date): ActivityVal
 
   if (Object.keys(errors).length > 0) return { ok: false, errors };
   return { ok: true, value: { date, name, durationMin, kcal: Math.round(kcal), stepsCounted } };
+}
+
+export function activityPreview(
+  kcal: number,
+  stepsCounted: number,
+  kcalPerStep: number,
+): { coveredKcal: number; bonusKcal: number; creditKcal: number } {
+  const covered = stepsCounted * kcalPerStep;
+  const bonus = activityBonusKcal(kcal, stepsCounted, kcalPerStep);
+  return {
+    coveredKcal: Math.round(covered),
+    bonusKcal: Math.round(bonus),
+    creditKcal: Math.round(bonus * ACTIVITY_CREDIT),
+  };
 }
