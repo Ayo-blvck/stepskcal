@@ -1,5 +1,5 @@
 import { Redirect, useFocusEffect, useRouter } from 'expo-router';
-import { Moon, Smartphone, Sun, UserRound } from 'lucide-react-native';
+import { UserRound } from 'lucide-react-native';
 import { useCallback, useState } from 'react';
 import { ScrollView, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -33,7 +33,7 @@ import {
   ProgressBar,
   RingStat,
 } from '../../ui/kit';
-import { useTheme, useThemePreference, type ThemePreference } from '../../ui/ThemeProvider';
+import { useTheme } from '../../ui/ThemeProvider';
 
 type State =
   | { status: 'loading' }
@@ -48,18 +48,11 @@ type State =
       weights: WeightEntry[];
     };
 
-const NEXT_THEME: Record<ThemePreference, ThemePreference> = {
-  light: 'dark',
-  dark: 'system',
-  system: 'light',
-};
-
 export default function Today() {
   const router = useRouter();
   const t = useTheme();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const { preference, setPreference } = useThemePreference();
   const [state, setState] = useState<State>({ status: 'loading' });
 
   useFocusEffect(
@@ -133,7 +126,7 @@ export default function Today() {
     : null;
 
   const ringSize = Math.max(100, Math.min(144, Math.floor((width - 88 - 16) / 2)));
-  const ThemeIcon = preference === 'dark' ? Moon : preference === 'system' ? Smartphone : Sun;
+
 
   return (
     <ScrollView
@@ -145,14 +138,15 @@ export default function Today() {
         gap: 14,
       }}
     >
-        <View style={{ flexDirection: 'row', gap: 10 }}>
-          <IconButton
-            icon={ThemeIcon}
-            label={`Theme: ${preference}. Tap to change`}
-            onPress={() => setPreference(NEXT_THEME[preference])}
-          />
-          <IconButton icon={UserRound} label="Profile and data" onPress={() => router.push('/profile')} />
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <View>
+          <AppText variant="small" tone="muted">
+            {formatDayHeading(today)}
+          </AppText>
+          <AppText variant="title">Today</AppText>
         </View>
+        <IconButton icon={UserRound} label="Profile and data" onPress={() => router.push('/profile')} />
+      </View>
 
       <BackupNudge profileCreatedAt={profile.createdAt} />
 
