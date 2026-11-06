@@ -322,3 +322,14 @@ export function backupNudge(
   const days = Math.floor((now - lastBackupAt) / day);
   return days >= 14 ? `Your last backup was ${days} days ago.` : null;
 }
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+export function describeLastBackup(lastAt: number | null, now: number): string {
+  if (lastAt === null) return 'No backup file has been created yet.';
+  const d = new Date(lastAt);
+  const days = Math.max(0, Math.floor((now - lastAt) / 86400000));
+  const when = `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+  const ago = days === 0 ? 'today' : days === 1 ? '1 day ago' : `${days} days ago`;
+  return `Last backup file created: ${when} (${ago}).`;
+}

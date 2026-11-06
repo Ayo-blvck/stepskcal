@@ -1,5 +1,5 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import type { LucideIcon } from 'lucide-react-native';
+import { ChevronLeft, type LucideIcon } from 'lucide-react-native';
 import type { ReactNode } from 'react';
 import {
   Pressable,
@@ -378,6 +378,15 @@ export function Snackbar(props: { message: string; actionLabel?: string; onActio
           </Pressable>
         ) : null}
       </View>
+    </View>
+  );
+}
+
+export function ScreenHeader(props: { title: string; onBack: () => void }) {
+  return (
+    <View style={{ gap: 14 }}>
+      <IconButton icon={ChevronLeft} label="Back" onPress={props.onBack} />
+      <AppText variant="title">{props.title}</AppText>
     </View>
   );
 }

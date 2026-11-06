@@ -20,3 +20,4 @@ export * from './todayView';
 export * from './foodCategories';
 export * from './progressView';
 export * from './reminderView';
+export * from './profileView';

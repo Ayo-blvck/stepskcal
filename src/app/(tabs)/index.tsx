@@ -1,5 +1,5 @@
 import { Redirect, useFocusEffect, useRouter } from 'expo-router';
-import { Moon, Smartphone, Sun } from 'lucide-react-native';
+import { Moon, Smartphone, Sun, UserRound } from 'lucide-react-native';
 import { useCallback, useState } from 'react';
 import { ScrollView, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -145,19 +145,14 @@ export default function Today() {
         gap: 14,
       }}
     >
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <View>
-          <AppText variant="small" tone="muted">
-            {formatDayHeading(today)}
-          </AppText>
-          <AppText variant="title">Today</AppText>
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <IconButton
+            icon={ThemeIcon}
+            label={`Theme: ${preference}. Tap to change`}
+            onPress={() => setPreference(NEXT_THEME[preference])}
+          />
+          <IconButton icon={UserRound} label="Profile and data" onPress={() => router.push('/profile')} />
         </View>
-        <IconButton
-          icon={ThemeIcon}
-          label={`Theme: ${preference}. Tap to change`}
-          onPress={() => setPreference(NEXT_THEME[preference])}
-        />
-      </View>
 
       <BackupNudge profileCreatedAt={profile.createdAt} />
 
