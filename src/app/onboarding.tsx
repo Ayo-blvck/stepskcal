@@ -75,8 +75,8 @@ export default function Onboarding() {
       if (!editing || latestKg === null || v.weightKg !== latestKg) {
         await logWeight(dateKey(), v.weightKg);
       }
-      if (editing) router.dismissTo('/');
-      else router.replace('/');
+      if (editing) router.dismissTo('/(tabs)');
+      else router.replace('/(tabs)');
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : String(e));
     } finally {

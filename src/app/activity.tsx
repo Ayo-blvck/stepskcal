@@ -126,7 +126,7 @@ export default function ActivityScreen() {
     try {
       if (editId !== null) await updateActivity(editId, result.value);
       else await addActivity(result.value);
-      router.dismissTo('/');
+      router.dismissTo('/(tabs)');
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -143,7 +143,7 @@ export default function ActivityScreen() {
         style: 'destructive',
         onPress: async () => {
           await deleteActivity(editId);
-          router.dismissTo('/');
+          router.dismissTo('/(tabs)');
         },
       },
     ]);

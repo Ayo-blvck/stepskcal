@@ -69,7 +69,7 @@ export default function BackupScreen() {
     try {
       await importAll(b);
       Alert.alert('Restored', 'Your data has been restored from the backup.', [
-        { text: 'OK', onPress: () => router.dismissTo('/') },
+        { text: 'OK', onPress: () => router.dismissTo('/(tabs)') },
       ]);
     } catch (e) {
       setMessage({

@@ -95,7 +95,7 @@ export default function LogEntry() {
           foodId: foodRefId ?? undefined,
         });
       }
-      router.dismissTo('/');
+      router.dismissTo('/(tabs)');
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -111,7 +111,7 @@ export default function LogEntry() {
         style: 'destructive',
         onPress: async () => {
           await deleteFoodLog(Number(logId));
-          router.dismissTo('/');
+          router.dismissTo('/(tabs)');
         },
       },
     ]);

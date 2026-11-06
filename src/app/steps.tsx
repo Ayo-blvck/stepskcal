@@ -44,7 +44,7 @@ export default function StepsScreen() {
     setSaving(true);
     try {
       await setSteps(date, 'watch', steps);
-      router.dismissTo('/');
+      router.dismissTo('/(tabs)');
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {

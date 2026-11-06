@@ -1,4 +1,4 @@
-import { Tabs, useRouter } from 'expo-router';
+import { Tabs, useRouter, Href } from 'expo-router';
 import {
   Activity,
   Bell,
@@ -26,9 +26,9 @@ const TABS: {
   name: string;
   label: string;
   Icon: LucideIcon;
-  href: '/' | '/foods' | '/progress' | '/reminders';
+  href: Href;
 }[] = [
-  { name: 'index', label: 'Today', Icon: House, href: '/' },
+  { name: 'index', label: 'Today', Icon: House, href: '/(tabs)' },
   { name: 'foods', label: 'Foods', Icon: Target, href: '/foods' },
   { name: 'progress', label: 'Progress', Icon: ChartLine, href: '/progress' },
   { name: 'reminders', label: 'Reminders', Icon: Bell, href: '/reminders' },
@@ -39,7 +39,7 @@ const ACTIONS: {
   title: string;
   sub: string;
   Icon: LucideIcon;
-  href: '/foods' | '/activity' | '/steps' | '/progress';
+  href: Href;
 }[] = [
   { key: 'food', title: 'Log food', sub: 'Pick from your foods or quick add', Icon: Utensils, href: '/foods' },
   { key: 'activity', title: 'Log activity', sub: 'Football, gym, treadmill', Icon: Activity, href: '/activity' },
