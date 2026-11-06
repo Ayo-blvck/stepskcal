@@ -55,7 +55,8 @@ export async function addFoodLog(e: {
   quantity?: number;
   servingLabel?: string;
   foodId?: number;
-}) {
+}): Promise<number> {
+  const loggedAt = Date.now();
   await db.insert(foodLogs).values({
     date: e.date,
     name: e.name,
@@ -63,8 +64,15 @@ export async function addFoodLog(e: {
     quantity: e.quantity ?? 1,
     servingLabel: e.servingLabel ?? null,
     foodId: e.foodId ?? null,
-    loggedAt: Date.now(),
+    loggedAt,
   });
+  const rows = await db
+    .select({ id: foodLogs.id })
+    .from(foodLogs)
+    .where(eq(foodLogs.loggedAt, loggedAt))
+    .orderBy(desc(foodLogs.id))
+    .limit(1);
+  return rows[0].id;
 }
 
 export async function deleteFoodLog(id: number) {

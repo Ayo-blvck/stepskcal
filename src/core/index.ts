@@ -17,3 +17,4 @@ export * from './backup';
 export * from './reminderSettings';
 export * from './reminders';
 export * from './todayView';
+export * from './foodCategories';

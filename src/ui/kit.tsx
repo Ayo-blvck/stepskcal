@@ -344,3 +344,40 @@ export function ListRow(props: {
   );
   return props.onPress ? <Pressable onPress={props.onPress}>{body}</Pressable> : body;
 }
+
+export function Snackbar(props: { message: string; actionLabel?: string; onAction?: () => void }) {
+  const t = useTheme();
+  return (
+    <View pointerEvents="box-none" style={{ position: 'absolute', left: 16, right: 16, bottom: 16 }}>
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 12,
+          backgroundColor: t.ink,
+          borderRadius: radius.field,
+          paddingVertical: 12,
+          paddingLeft: 16,
+          paddingRight: 8,
+        }}
+      >
+        <Text style={{ flex: 1, fontFamily: font.semibold, fontSize: 14, color: t.onInk }}>
+          {props.message}
+        </Text>
+        {props.actionLabel ? (
+          <Pressable onPress={props.onAction} hitSlop={8} style={{ padding: 8 }}>
+            <Text
+              style={{
+                fontFamily: font.bold,
+                fontSize: 14,
+                color: t.mode === 'dark' ? '#14683F' : t.lime,
+              }}
+            >
+              {props.actionLabel}
+            </Text>
+          </Pressable>
+        ) : null}
+      </View>
+    </View>
+  );
+}
