@@ -1,5 +1,7 @@
-import { Pressable, StyleSheet, Text, TextInput, View, type KeyboardTypeOptions } from 'react-native';
-import { colors } from './theme';
+import { Pressable, TextInput, View, type KeyboardTypeOptions } from 'react-native';
+import { AppText, Button } from './kit';
+import { useTheme } from './ThemeProvider';
+import { font, radius } from './tokens';
 
 export function Field(props: {
   label: string;
@@ -11,23 +13,39 @@ export function Field(props: {
   keyboardType?: KeyboardTypeOptions;
   maxLength?: number;
 }) {
+  const t = useTheme();
   return (
-    <View style={s.field}>
-      <Text style={s.label}>{props.label}</Text>
-      <TextInput
-        style={[s.input, props.error ? s.inputError : null]}
+    <View style={{ gap: 6 }}>
+      <AppText variant="label">{props.label}</AppText>
+      <TextInput 
+        maxFontSizeMultiplier={1.4}
+        style={{
+          borderWidth: 1,
+          borderColor: props.error ? t.danger : t.border,
+          borderRadius: radius.field,
+          backgroundColor: t.card,
+          paddingHorizontal: 14,
+          paddingVertical: 12,
+          fontFamily: font.medium,
+          fontSize: 16,
+          color: t.text,
+        }}
         value={props.value}
         onChangeText={props.onChangeText}
         placeholder={props.placeholder}
-        placeholderTextColor="#999999"
+        placeholderTextColor={t.muted}
         keyboardType={props.keyboardType}
         maxLength={props.maxLength}
         autoCorrect={false}
       />
       {props.error ? (
-        <Text style={s.error}>{props.error}</Text>
+        <AppText variant="caption" tone="danger">
+          {props.error}
+        </AppText>
       ) : props.hint ? (
-        <Text style={s.hint}>{props.hint}</Text>
+        <AppText variant="caption" tone="muted">
+          {props.hint}
+        </AppText>
       ) : null}
     </View>
   );
@@ -40,98 +58,57 @@ export function Segmented<T extends string>(props: {
   onChange: (v: T) => void;
   error?: string;
 }) {
+  const t = useTheme();
   return (
-    <View style={s.field}>
-      {props.label ? <Text style={s.label}>{props.label}</Text> : null}
-      <View style={s.segRow}>
+    <View style={{ gap: 6 }}>
+      {props.label ? <AppText variant="label">{props.label}</AppText> : null}
+      <View style={{ flexDirection: 'row', gap: 8 }}>
         {props.options.map((o) => {
-          const active = o.value === props.value;
+          const on = o.value === props.value;
           return (
             <Pressable
               key={o.value}
               onPress={() => props.onChange(o.value)}
-              style={[s.seg, active ? s.segActive : null]}
+              style={{
+                flex: 1,
+                minHeight: 44,
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: radius.pill,
+                backgroundColor: on ? t.ink : t.card,
+                borderWidth: 1,
+                borderColor: on ? t.ink : t.border,
+              }}
             >
-              <Text style={[s.segText, active ? s.segTextActive : null]}>{o.label}</Text>
+              <AppText
+                variant="bodyStrong"
+                style={{ color: on ? t.onInk : t.text, fontFamily: on ? font.bold : font.semibold }}
+              >
+                {o.label}
+              </AppText>
             </Pressable>
           );
         })}
       </View>
-      {props.error ? <Text style={s.error}>{props.error}</Text> : null}
+      {props.error ? (
+        <AppText variant="caption" tone="danger">
+          {props.error}
+        </AppText>
+      ) : null}
     </View>
   );
 }
 
 export function PrimaryButton(props: { title: string; onPress: () => void; disabled?: boolean }) {
-  return (
-    <Pressable
-      onPress={props.onPress}
-      disabled={props.disabled}
-      style={[s.button, props.disabled ? s.buttonDisabled : null]}
-    >
-      <Text style={s.buttonText}>{props.title}</Text>
-    </Pressable>
-  );
-}
-export function SecondaryButton(props: { title: string; onPress: () => void; danger?: boolean }) {
-  return (
-    <Pressable
-      onPress={props.onPress}
-      style={[s.buttonSecondary, props.danger ? s.buttonDanger : null]}
-    >
-      <Text style={[s.buttonSecondaryText, props.danger ? s.buttonDangerText : null]}>
-        {props.title}
-      </Text>
-    </Pressable>
-  );
+  return <Button title={props.title} onPress={props.onPress} disabled={props.disabled} />;
 }
 
-const s = StyleSheet.create({
-  field: { gap: 6 },
-  label: { fontSize: 14, fontWeight: '600', color: colors.text },
-  input: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 10,
-    backgroundColor: colors.card,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 16,
-    color: colors.text,
-  },
-  inputError: { borderColor: colors.danger },
-  error: { fontSize: 12, color: colors.danger },
-  hint: { fontSize: 12, color: colors.muted },
-  segRow: { flexDirection: 'row', gap: 8 },
-  seg: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.card,
-  },
-  segActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  segText: { fontSize: 15, color: colors.text },
-  segTextActive: { color: '#FFFFFF', fontWeight: '600' },
-  button: {
-    backgroundColor: colors.primary,
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  buttonDisabled: { opacity: 0.5 },
-  buttonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
-  buttonSecondary: {
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.card,
-  },
-  buttonSecondaryText: { fontSize: 16, fontWeight: '600', color: colors.text },
-  buttonDanger: { borderColor: colors.danger },
-  buttonDangerText: { color: colors.danger },
-});
+export function SecondaryButton(props: { title: string; onPress: () => void; danger?: boolean }) {
+  return (
+    <Button
+      title={props.title}
+      onPress={props.onPress}
+      variant={props.danger ? 'danger' : 'secondary'}
+    />
+  );
+}

@@ -3,35 +3,26 @@ import { File, Paths } from 'expo-file-system';
 import { useFocusEffect, useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import { useCallback, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, ScrollView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   MAX_BACKUP_BYTES,
   backupFileName,
   backupSummary,
+  describeLastBackup,
   parseBackup,
   type BackupFile,
 } from '../core';
 import { exportAll, getKv, importAll, setKv } from '../db/repo';
-import { PrimaryButton, SecondaryButton } from '../ui/form';
-import { colors } from '../ui/theme';
+import { AppText, Button, Card, ScreenHeader } from '../ui/kit';
+import { useTheme } from '../ui/ThemeProvider';
 
 type Message = { kind: 'ok' | 'error'; text: string } | null;
 
-function describeLast(ms: number | null): string {
-  if (ms === null) return 'No backup file has been created yet.';
-  const when = new Date(ms).toLocaleString('en-GB', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-  const days = Math.floor((Date.now() - ms) / 86400000);
-  return `Last backup file created: ${when} (${days === 0 ? 'today' : `${days} day${days === 1 ? '' : 's'} ago`}).`;
-}
-
 export default function BackupScreen() {
   const router = useRouter();
+  const t = useTheme();
+  const insets = useSafeAreaInsets();
   const [lastAt, setLastAt] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<Message>(null);
@@ -120,59 +111,50 @@ export default function BackupScreen() {
         ],
       );
     } catch (e) {
-      setMessage({ kind: 'error', text: `Could not read that file: ${e instanceof Error ? e.message : String(e)}` });
+      setMessage({
+        kind: 'error',
+        text: `Could not read that file: ${e instanceof Error ? e.message : String(e)}`,
+      });
     }
   }
 
   return (
-    <ScrollView style={{ backgroundColor: colors.bg }} contentContainerStyle={s.page}>
-      <Pressable onPress={() => router.back()}>
-        <Text style={s.back}>‹ Back</Text>
-      </Pressable>
-      <Text style={s.title}>Backup and restore</Text>
+    <ScrollView
+      style={{ flex: 1, backgroundColor: t.bg }}
+      contentContainerStyle={{
+        paddingHorizontal: 24,
+        paddingTop: insets.top + 16,
+        paddingBottom: insets.bottom + 32,
+        gap: 14,
+      }}
+    >
+      <ScreenHeader title="Backup and restore" onBack={() => router.back()} />
 
-      <View style={s.card}>
-        <Text style={s.section}>Back up</Text>
-        <Text style={s.note}>
-          Your data lives only on this phone. A reset, an uninstall or a lost phone would erase it.
-          Create a backup file and save it somewhere outside the phone, such as Google Drive or an
-          email to yourself.
-        </Text>
-        <Text style={s.note}>{describeLast(lastAt)}</Text>
-        <PrimaryButton title="Create backup file" onPress={onBackup} disabled={busy} />
-      </View>
+      <Card style={{ gap: 12 }}>
+        <AppText variant="h2">Back up</AppText>
+        <AppText variant="small" tone="muted">
+          Your data lives only on this phone. A reset, an uninstall or a lost phone would erase it. Create
+          a backup file and save it somewhere outside the phone, such as Google Drive or an email to
+          yourself.
+        </AppText>
+        <AppText variant="small">{describeLastBackup(lastAt, Date.now())}</AppText>
+        <Button title="Create backup file" onPress={onBackup} disabled={busy} />
+      </Card>
 
-      <View style={s.card}>
-        <Text style={s.section}>Restore</Text>
-        <Text style={s.note}>
-          Pick a backup file to rebuild your data on this phone. It replaces everything currently in
-          the app, and you will see what is in the file before anything changes.
-        </Text>
-        <SecondaryButton title="Restore from a file" onPress={onRestore} />
-      </View>
+      <Card style={{ gap: 12 }}>
+        <AppText variant="h2">Restore</AppText>
+        <AppText variant="small" tone="muted">
+          Pick a backup file to rebuild your data on this phone. It replaces everything currently in the
+          app, and you will see what is in the file before anything changes.
+        </AppText>
+        <Button title="Restore from a file" variant="secondary" onPress={onRestore} disabled={busy} />
+      </Card>
 
       {message ? (
-        <Text style={[s.message, message.kind === 'error' ? s.error : s.ok]}>{message.text}</Text>
+        <AppText variant="small" tone={message.kind === 'ok' ? 'accent' : 'danger'}>
+          {message.text}
+        </AppText>
       ) : null}
     </ScrollView>
   );
 }
-
-const s = StyleSheet.create({
-  page: { padding: 24, paddingTop: 64, paddingBottom: 48, gap: 14 },
-  back: { fontSize: 16, color: colors.primary },
-  title: { fontSize: 26, fontWeight: '700', color: colors.text },
-  card: {
-    backgroundColor: colors.card,
-    borderRadius: 14,
-    padding: 16,
-    gap: 10,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  section: { fontSize: 17, fontWeight: '700', color: colors.text },
-  note: { fontSize: 13, color: colors.muted, lineHeight: 19 },
-  message: { fontSize: 14, lineHeight: 20 },
-  ok: { color: colors.primary },
-  error: { color: colors.danger },
-});

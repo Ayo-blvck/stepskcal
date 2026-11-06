@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   DEFAULTS,
   activityBonusKcal,
+  activityPreview,
   kcalPerStep,
   planDay,
   suggestActivityKcal,
@@ -105,5 +106,19 @@ describe('football and the food budget', () => {
       activities: [{ kcal: 100, stepsCounted: 5000 }],
     });
     expect(p.activityCreditKcal).toBe(0);
+  });
+});
+
+describe('activity preview', () => {
+  const kps = kcalPerStep(100, 180);
+  it('splits a football session into steps, extra and budget credit', () => {
+    expect(activityPreview(900, 8100, kps)).toEqual({ coveredKcal: 320, bonusKcal: 580, creditKcal: 290 });
+  });
+  it('credits more when the watch counts fewer steps', () => {
+    expect(activityPreview(900, 12000, kps)).toEqual({ coveredKcal: 474, bonusKcal: 426, creditKcal: 213 });
+    expect(activityPreview(900, 0, kps)).toEqual({ coveredKcal: 0, bonusKcal: 900, creditKcal: 450 });
+  });
+  it('gives nothing when the steps already cover the session', () => {
+    expect(activityPreview(100, 5000, kps).creditKcal).toBe(0);
   });
 });

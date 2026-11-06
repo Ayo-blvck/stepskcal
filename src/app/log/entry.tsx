@@ -1,6 +1,7 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, ScrollView, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   PORTION_CHIPS,
   formatQuantity,
@@ -11,11 +12,14 @@ import {
 } from '../../core';
 import { addFoodLog, deleteFoodLog, getFood, getFoodLog, updateFoodLog } from '../../db/repo';
 import { dateKey } from '../../lib/dates';
-import { Field, PrimaryButton, SecondaryButton } from '../../ui/form';
-import { colors } from '../../ui/theme';
+import { Field } from '../../ui/form';
+import { AppText, Button, Chip } from '../../ui/kit';
+import { useTheme } from '../../ui/ThemeProvider';
 
 export default function LogEntry() {
   const router = useRouter();
+  const t = useTheme();
+  const insets = useSafeAreaInsets();
   const { foodId, logId, quick } = useLocalSearchParams<{
     foodId?: string;
     logId?: string;
@@ -100,7 +104,7 @@ export default function LogEntry() {
   }
 
   function onDelete() {
-    Alert.alert('Delete this entry?', 'It will be removed from today\'s log.', [
+    Alert.alert('Delete this entry?', "It will be removed from today's log.", [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
@@ -114,24 +118,28 @@ export default function LogEntry() {
   }
 
   const activeQty = parseQuantity(qty);
+  const title = isEdit ? 'Edit entry' : mode === 'quick' ? 'Quick add' : 'Add to today';
 
   return (
     <ScrollView
-      style={{ backgroundColor: colors.bg }}
-      contentContainerStyle={s.page}
+      style={{ flex: 1, backgroundColor: t.bg }}
+      contentContainerStyle={{
+        paddingHorizontal: 24,
+        paddingTop: insets.top + 16,
+        paddingBottom: insets.bottom + 32,
+        gap: 18,
+      }}
       keyboardShouldPersistTaps="handled"
     >
-      <Text style={s.title}>
-        {isEdit ? 'Edit entry' : mode === 'quick' ? 'Quick add' : 'Add to today'}
-      </Text>
+      <AppText variant="title">{title}</AppText>
 
       {mode === 'food' ? (
         <View style={{ gap: 4 }}>
-          <Text style={s.foodName}>{name}</Text>
-          <Text style={s.muted}>
+          <AppText variant="number">{name}</AppText>
+          <AppText variant="small" tone="muted">
             1 serving = {servingLabel}
             {perServing !== null ? ` · ${Math.round(perServing)} kcal` : ''}
-          </Text>
+          </AppText>
         </View>
       ) : (
         <Field
@@ -145,22 +153,18 @@ export default function LogEntry() {
 
       {mode === 'food' ? (
         <View style={{ gap: 10 }}>
-          <Text style={s.label}>Servings</Text>
-          <View style={s.chips}>
-            {PORTION_CHIPS.map((c) => {
-              const active = activeQty === c;
-              return (
-                <Pressable
-                  key={c}
-                  onPress={() => onQty(String(c))}
-                  style={[s.chip, active ? s.chipActive : null]}
-                >
-                  <Text style={[s.chipText, active ? s.chipTextActive : null]}>
-                    {formatQuantity(c)}
-                  </Text>
-                </Pressable>
-              );
-            })}
+          <AppText variant="label">Servings</AppText>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {PORTION_CHIPS.map((c) => (
+              <Chip
+                key={c}
+                label={formatQuantity(c)}
+                tone="green"
+                selected={activeQty === c}
+                onPress={() => onQty(String(c))}
+                style={{ flex: 1, paddingHorizontal: 0 }}
+              />
+            ))}
           </View>
           <Field
             label="Or type a number"
@@ -185,33 +189,25 @@ export default function LogEntry() {
         }
       />
 
-      {saveError ? <Text style={s.saveError}>Could not save: {saveError}</Text> : null}
-      <PrimaryButton title={isEdit ? 'Save changes' : 'Add to today'} onPress={onSave} disabled={saving} />
-      <SecondaryButton title="Cancel" onPress={() => router.back()} />
-      {isEdit ? <SecondaryButton title="Delete entry" danger onPress={onDelete} /> : null}
+      {saveError ? (
+        <AppText variant="small" tone="danger">
+          Could not save: {saveError}
+        </AppText>
+      ) : null}
+
+      <View style={{ gap: 10 }}>
+        <Button title={isEdit ? 'Save changes' : 'Add to today'} onPress={onSave} disabled={saving} />
+        <Button title="Cancel" variant="secondary" onPress={() => router.back()} />
+        {isEdit ? <Button title="Delete entry" variant="danger" onPress={onDelete} /> : null}
+        {!isEdit && mode === 'food' && foodRefId !== null ? (
+          <Button
+            title="Edit this food"
+            variant="ghost"
+            size="sm"
+            onPress={() => router.replace({ pathname: '/food-edit', params: { id: String(foodRefId) } })}
+          />
+        ) : null}
+      </View>
     </ScrollView>
   );
 }
-
-const s = StyleSheet.create({
-  page: { padding: 24, paddingTop: 64, paddingBottom: 48, gap: 16 },
-  title: { fontSize: 26, fontWeight: '700', color: colors.text },
-  foodName: { fontSize: 20, fontWeight: '600', color: colors.text },
-  muted: { fontSize: 13, color: colors.muted },
-  label: { fontSize: 14, fontWeight: '600', color: colors.text },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: {
-    minWidth: 52,
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.card,
-  },
-  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipText: { fontSize: 16, color: colors.text },
-  chipTextActive: { color: '#FFFFFF', fontWeight: '600' },
-  saveError: { color: colors.danger, fontSize: 13 },
-});

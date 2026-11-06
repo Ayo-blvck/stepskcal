@@ -1,46 +1,15 @@
 import { useState } from 'react';
-import { StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
-import { dateFromDayNumber, weightAxis } from '../core';
+import { Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
+import Svg, { Circle, Line, Polyline } from 'react-native-svg';
+import { dateFromDayNumber, nearestIndex, weightAxis } from '../core';
 import { formatShort } from '../lib/dates';
-import { colors } from './theme';
+import { AppText } from './kit';
+import { useTheme } from './ThemeProvider';
+import { font } from './tokens';
 
 export interface ChartPoint {
   t: number; // day number
   kg: number;
-}
-
-const LINE = '#1B5FAA';
-const PLAN = '#9A9A92';
-const STRETCH = '#7FB89A';
-
-function Segment(p: {
-  x1: number;
-  y1: number;
-  x2: number;
-  y2: number;
-  color: string;
-  thickness?: number;
-}) {
-  const thickness = p.thickness ?? 2;
-  const dx = p.x2 - p.x1;
-  const dy = p.y2 - p.y1;
-  const len = Math.sqrt(dx * dx + dy * dy);
-  if (len < 0.5) return null;
-  return (
-    <View
-      pointerEvents="none"
-      style={{
-        position: 'absolute',
-        left: p.x1,
-        top: p.y1 - thickness / 2,
-        width: len,
-        height: thickness,
-        backgroundColor: p.color,
-        transformOrigin: 'left center',
-        transform: [{ rotate: `${Math.atan2(dy, dx)}rad` }],
-      }}
-    />
-  );
 }
 
 export function WeightChart(props: {
@@ -50,8 +19,11 @@ export function WeightChart(props: {
   plan: { from: ChartPoint; to: ChartPoint } | null;
   xMin: number;
   xMax: number;
+  selected: number | null;
+  onSelect?: (index: number) => void;
   height?: number;
 }) {
+  const t = useTheme();
   const [width, setWidth] = useState(0);
   const height = props.height ?? 220;
   const padL = 40;
@@ -69,129 +41,198 @@ export function WeightChart(props: {
   ];
   const axis = weightAxis(values);
   const span = Math.max(1, props.xMax - props.xMin);
-  const X = (t: number) => padL + ((t - props.xMin) / span) * plotW;
+  const X = (day: number) => padL + ((day - props.xMin) / span) * plotW;
   const Y = (kg: number) => padT + ((axis.max - kg) / (axis.max - axis.min)) * plotH;
   const ticks = [axis.max, (axis.max + axis.min) / 2, axis.min];
+
+  const xs = props.points.map((p) => X(p.t));
   const showDots = props.points.length <= 45;
+  const last = props.points.length - 1;
+  const sel = props.selected !== null ? props.points[props.selected] : undefined;
 
   return (
     <View>
-      <View
+      <Pressable
         style={{ height }}
         onLayout={(e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width)}
+        onPressIn={(e) => {
+          const i = nearestIndex(xs, e.nativeEvent.locationX);
+          if (i >= 0) props.onSelect?.(i);
+        }}
       >
-        {width > 0 ? (
-          <>
-            {ticks.map((v) => (
-              <View key={v}>
-                <View
+        <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+          {width > 0 ? (
+            <>
+              <Svg width={width} height={height}>
+                {ticks.map((v) => (
+                  <Line
+                    key={v}
+                    x1={padL}
+                    x2={padL + plotW}
+                    y1={Y(v)}
+                    y2={Y(v)}
+                    stroke={t.border}
+                    strokeWidth={1}
+                  />
+                ))}
+
+                {props.stretchKg !== null ? (
+                  <Line
+                    x1={padL}
+                    x2={padL + plotW}
+                    y1={Y(props.stretchKg)}
+                    y2={Y(props.stretchKg)}
+                    stroke={t.accent}
+                    strokeOpacity={0.45}
+                    strokeWidth={2}
+                    strokeDasharray="3 6"
+                  />
+                ) : null}
+                <Line
+                  x1={padL}
+                  x2={padL + plotW}
+                  y1={Y(props.goalKg)}
+                  y2={Y(props.goalKg)}
+                  stroke={t.accent}
+                  strokeWidth={2.5}
+                  strokeDasharray="7 6"
+                />
+
+                {props.plan ? (
+                  <Line
+                    x1={X(props.plan.from.t)}
+                    y1={Y(props.plan.from.kg)}
+                    x2={X(props.plan.to.t)}
+                    y2={Y(props.plan.to.kg)}
+                    stroke={t.chartPlan}
+                    strokeWidth={2.5}
+                    strokeLinecap="round"
+                  />
+                ) : null}
+
+                {props.points.length > 1 ? (
+                  <Polyline
+                    points={props.points.map((p) => `${X(p.t)},${Y(p.kg)}`).join(' ')}
+                    fill="none"
+                    stroke={t.chartLine}
+                    strokeWidth={3}
+                    strokeLinejoin="round"
+                    strokeLinecap="round"
+                  />
+                ) : null}
+
+                {sel ? (
+                  <Line
+                    x1={X(sel.t)}
+                    x2={X(sel.t)}
+                    y1={padT}
+                    y2={padT + plotH}
+                    stroke={t.chartLine}
+                    strokeOpacity={0.35}
+                    strokeWidth={1.5}
+                  />
+                ) : null}
+
+                {showDots
+                  ? props.points.slice(0, last).map((p, i) => (
+                      <Circle key={i} cx={X(p.t)} cy={Y(p.kg)} r={4} fill={t.chartLine} />
+                    ))
+                  : null}
+                {last >= 0 ? (
+                  <Circle
+                    cx={X(props.points[last].t)}
+                    cy={Y(props.points[last].kg)}
+                    r={7}
+                    fill={t.chartLine}
+                    stroke={t.card}
+                    strokeWidth={3}
+                  />
+                ) : null}
+                {sel && props.selected !== last ? (
+                  <Circle
+                    cx={X(sel.t)}
+                    cy={Y(sel.kg)}
+                    r={7}
+                    fill={t.chartLine}
+                    stroke={t.card}
+                    strokeWidth={3}
+                  />
+                ) : null}
+              </Svg>
+
+              {ticks.map((v) => (
+                <Text
+                  key={`tick-${v}`}
                   style={{
                     position: 'absolute',
-                    left: padL,
-                    width: plotW,
-                    top: Y(v),
-                    height: StyleSheet.hairlineWidth,
-                    backgroundColor: colors.border,
+                    left: 0,
+                    width: padL - 8,
+                    top: Y(v) - 8,
+                    textAlign: 'right',
+                    fontFamily: font.medium,
+                    fontSize: 12,
+                    color: t.muted,
                   }}
-                />
-                <Text style={[s.tick, { top: Y(v) - 8, width: padL - 6 }]}>{Math.round(v)}</Text>
-              </View>
-            ))}
+                >
+                  {Math.round(v)}
+                </Text>
+              ))}
+              <Text
+                style={{
+                  position: 'absolute',
+                  left: padL,
+                  top: height - 20,
+                  fontFamily: font.medium,
+                  fontSize: 12,
+                  color: t.muted,
+                }}
+              >
+                {formatShort(dateFromDayNumber(props.xMin))}
+              </Text>
+              <Text
+                style={{
+                  position: 'absolute',
+                  right: padR,
+                  top: height - 20,
+                  fontFamily: font.medium,
+                  fontSize: 12,
+                  color: t.muted,
+                }}
+              >
+                {formatShort(dateFromDayNumber(props.xMax), true)}
+              </Text>
+            </>
+          ) : null}
+        </View>
+      </Pressable>
 
-            {props.stretchKg !== null ? (
-              <Segment
-                x1={padL}
-                y1={Y(props.stretchKg)}
-                x2={padL + plotW}
-                y2={Y(props.stretchKg)}
-                color={STRETCH}
-                thickness={1.5}
-              />
-            ) : null}
-            <Segment
-              x1={padL}
-              y1={Y(props.goalKg)}
-              x2={padL + plotW}
-              y2={Y(props.goalKg)}
-              color={colors.primary}
-              thickness={1.5}
-            />
-            {props.plan ? (
-              <Segment
-                x1={X(props.plan.from.t)}
-                y1={Y(props.plan.from.kg)}
-                x2={X(props.plan.to.t)}
-                y2={Y(props.plan.to.kg)}
-                color={PLAN}
-              />
-            ) : null}
-
-            {props.points.slice(1).map((p, i) => {
-              const a = props.points[i];
-              return (
-                <Segment
-                  key={`seg-${i}`}
-                  x1={X(a.t)}
-                  y1={Y(a.kg)}
-                  x2={X(p.t)}
-                  y2={Y(p.kg)}
-                  color={LINE}
-                  thickness={2.5}
-                />
-              );
-            })}
-            {showDots || props.points.length === 1
-              ? props.points.map((p, i) => (
-                  <View
-                    key={`dot-${i}`}
-                    pointerEvents="none"
-                    style={{
-                      position: 'absolute',
-                      left: X(p.t) - 4,
-                      top: Y(p.kg) - 4,
-                      width: 8,
-                      height: 8,
-                      borderRadius: 4,
-                      backgroundColor: LINE,
-                    }}
-                  />
-                ))
-              : null}
-
-            <Text style={[s.xLabel, { left: padL, top: height - 18 }]}>
-              {formatShort(dateFromDayNumber(props.xMin))}
-            </Text>
-            <Text style={[s.xLabel, { right: padR, top: height - 18 }]}>
-              {formatShort(dateFromDayNumber(props.xMax), true)}
-            </Text>
-          </>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 14, marginTop: 8 }}>
+        <Key color={t.chartLine} label="Your weight" />
+        {props.plan ? <Key color={t.chartPlan} label="Plan" /> : null}
+        <Key color={t.accent} label={`Goal ${props.goalKg}`} />
+        {props.stretchKg !== null ? (
+          <Key color={t.accent} faded label={`Stretch ${props.stretchKg}`} />
         ) : null}
       </View>
-
-      <View style={s.legend}>
-        <Key color={LINE} label="Your weight" />
-        {props.plan ? <Key color={PLAN} label="Plan" /> : null}
-        <Key color={colors.primary} label={`Goal ${props.goalKg}`} />
-        {props.stretchKg !== null ? <Key color={STRETCH} label={`Stretch ${props.stretchKg}`} /> : null}
-      </View>
     </View>
   );
 }
 
-function Key(p: { color: string; label: string }) {
+function Key(props: { color: string; label: string; faded?: boolean }) {
   return (
-    <View style={s.key}>
-      <View style={[s.swatch, { backgroundColor: p.color }]} />
-      <Text style={s.keyText}>{p.label}</Text>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+      <View
+        style={{
+          width: 9,
+          height: 9,
+          borderRadius: 5,
+          backgroundColor: props.color,
+          opacity: props.faded ? 0.45 : 1,
+        }}
+      />
+      <AppText variant="caption" tone="muted">
+        {props.label}
+      </AppText>
     </View>
   );
 }
-
-const s = StyleSheet.create({
-  tick: { position: 'absolute', left: 0, textAlign: 'right', fontSize: 11, color: colors.muted },
-  xLabel: { position: 'absolute', fontSize: 11, color: colors.muted },
-  legend: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 6 },
-  key: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  swatch: { width: 14, height: 3, borderRadius: 2 },
-  keyText: { fontSize: 12, color: colors.muted },
-});

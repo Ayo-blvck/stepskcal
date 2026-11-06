@@ -1,13 +1,15 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { View } from 'react-native';
 import { backupNudge } from '../core';
 import { getKv } from '../db/repo';
-import { SecondaryButton } from './form';
-import { colors } from './theme';
+import { AppText, Button } from './kit';
+import { useTheme } from './ThemeProvider';
+import { radius } from './tokens';
 
 export function BackupNudge(props: { profileCreatedAt: number }) {
   const router = useRouter();
+  const t = useTheme();
   const [msg, setMsg] = useState<string | null>(null);
 
   useFocusEffect(
@@ -24,21 +26,24 @@ export function BackupNudge(props: { profileCreatedAt: number }) {
 
   if (!msg) return null;
   return (
-    <View style={s.card}>
-      <Text style={s.text}>{msg}</Text>
-      <SecondaryButton title="Back up now" onPress={() => router.push('/backup')} />
+    <View
+      style={{
+        backgroundColor: t.warnBg,
+        borderColor: t.warnBorder,
+        borderWidth: 1,
+        borderRadius: radius.card,
+        padding: 16,
+        gap: 12,
+      }}
+    >
+      <AppText>{msg}</AppText>
+      <Button
+        title="Back up now"
+        variant="secondary"
+        size="sm"
+        onPress={() => router.push('/backup')}
+        style={{ alignSelf: 'flex-start' }}
+      />
     </View>
   );
 }
-
-const s = StyleSheet.create({
-  card: {
-    backgroundColor: '#FFF7E6',
-    borderRadius: 14,
-    padding: 16,
-    gap: 10,
-    borderWidth: 1,
-    borderColor: '#F0D9A8',
-  },
-  text: { fontSize: 14, color: colors.text, lineHeight: 20 },
-});

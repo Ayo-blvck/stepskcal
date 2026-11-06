@@ -1,21 +1,21 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text } from 'react-native';
-import { findDuplicateFood, validateFoodForm, type FoodFormErrors, type RawFoodForm } from '../../core';
-import { addCustomFood, getFood, hideFood, listFoods, updateFood } from '../../db/repo';
-import { Field, PrimaryButton, SecondaryButton } from '../../ui/form';
-import { colors } from '../../ui/theme';
+import { Alert, ScrollView, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { findDuplicateFood, validateFoodForm, type FoodFormErrors, type RawFoodForm } from '../core';
+import { addCustomFood, getFood, hideFood, listFoods, updateFood } from '../db/repo';
+import { Field } from '../ui/form';
+import { AppText, Button } from '../ui/kit';
+import { useTheme } from '../ui/ThemeProvider';
 
 export default function FoodEdit() {
   const router = useRouter();
+  const t = useTheme();
+  const insets = useSafeAreaInsets();
   const { id, name } = useLocalSearchParams<{ id?: string; name?: string }>();
   const foodId = id ? Number(id) : null;
 
-  const [form, setForm] = useState<RawFoodForm>({
-    name: name ?? '',
-    servingLabel: '',
-    kcal: '',
-  });
+  const [form, setForm] = useState<RawFoodForm>({ name: name ?? '', servingLabel: '', kcal: '' });
   const [errors, setErrors] = useState<FoodFormErrors>({});
   const [isSeed, setIsSeed] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -81,47 +81,49 @@ export default function FoodEdit() {
 
   return (
     <ScrollView
-      style={{ backgroundColor: colors.bg }}
-      contentContainerStyle={s.page}
+      style={{ flex: 1, backgroundColor: t.bg }}
+      contentContainerStyle={{
+        paddingHorizontal: 24,
+        paddingTop: insets.top + 16,
+        paddingBottom: insets.bottom + 32,
+        gap: 18,
+      }}
       keyboardShouldPersistTaps="handled"
     >
-      <Text style={s.title}>{foodId === null ? 'Add a food' : 'Edit food'}</Text>
+      <AppText variant="title">{foodId === null ? 'Add a food' : 'Edit food'}</AppText>
       {isSeed ? (
-        <Text style={s.note}>Pre-loaded estimate. Change it to match what you actually eat.</Text>
+        <AppText variant="small" tone="muted">
+          Pre-loaded estimate. Change it to match what you actually eat.
+        </AppText>
       ) : null}
 
-      <Field
-        label="Name"
-        value={form.name}
-        onChangeText={(t) => set('name', t)}
-        error={errors.name}
-      />
+      <Field label="Name" value={form.name} onChangeText={(v) => set('name', v)} error={errors.name} />
       <Field
         label="One serving is"
         value={form.servingLabel}
-        onChangeText={(t) => set('servingLabel', t)}
+        onChangeText={(v) => set('servingLabel', v)}
         error={errors.servingLabel}
-        hint='For example "1 medium wrap (~300 g)" or "1 plate".'
+        hint={'For example "1 medium wrap (~300 g)" or "1 plate".'}
       />
       <Field
         label="Calories per serving (kcal)"
         keyboardType="decimal-pad"
         value={form.kcal}
-        onChangeText={(t) => set('kcal', t)}
+        onChangeText={(v) => set('kcal', v)}
         error={errors.kcal}
       />
 
-      {saveError ? <Text style={s.saveError}>Could not save: {saveError}</Text> : null}
-      <PrimaryButton title="Save" onPress={onSave} disabled={saving} />
-      <SecondaryButton title="Cancel" onPress={() => router.back()} />
-      {foodId !== null ? <SecondaryButton title="Hide this food" danger onPress={onHide} /> : null}
+      {saveError ? (
+        <AppText variant="small" tone="danger">
+          Could not save: {saveError}
+        </AppText>
+      ) : null}
+
+      <View style={{ gap: 10 }}>
+        <Button title="Save" onPress={onSave} disabled={saving} />
+        <Button title="Cancel" variant="secondary" onPress={() => router.back()} />
+        {foodId !== null ? <Button title="Hide this food" variant="danger" onPress={onHide} /> : null}
+      </View>
     </ScrollView>
   );
 }
-
-const s = StyleSheet.create({
-  page: { padding: 24, paddingTop: 64, paddingBottom: 48, gap: 14 },
-  title: { fontSize: 26, fontWeight: '700', color: colors.text },
-  note: { fontSize: 13, color: colors.muted },
-  saveError: { color: colors.danger, fontSize: 13 },
-});

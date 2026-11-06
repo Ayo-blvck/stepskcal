@@ -222,3 +222,15 @@ export function validateProfileForm(f: RawProfileForm, today: Date): ValidationR
     },
   };
 }
+
+export function resolveMode(o: {
+  existingMode: Mode | null;
+  existingGoalKg: number | null;
+  goalKg: number;
+  weightKg: number;
+}): Mode {
+  if (o.existingMode !== null && o.existingGoalKg !== null && o.existingGoalKg === o.goalKg) {
+    return o.existingMode;
+  }
+  return suggestMode(o.weightKg, o.goalKg);
+}

@@ -1,10 +1,10 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
-  ACTIVITY_CREDIT,
   ACTIVITY_PRESETS,
-  activityBonusKcal,
+  activityPreview,
   formatDateInput,
   kcalPerStep,
   suggestActivityKcal,
@@ -24,13 +24,27 @@ import {
 } from '../db/repo';
 import type { Activity } from '../db/schema';
 import { dateKey, formatShort } from '../lib/dates';
-import { Field, PrimaryButton, SecondaryButton } from '../ui/form';
-import { colors } from '../ui/theme';
+import { Field } from '../ui/form';
+import { AppText, Button, Card, Chip, ListRow } from '../ui/kit';
+import { useTheme } from '../ui/ThemeProvider';
 
 const n = (x: number) => Math.round(x).toLocaleString('en-US');
 
+function PreviewRow(props: { label: string; value: string }) {
+  return (
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
+      <AppText variant="small" tone="muted" style={{ flex: 1 }}>
+        {props.label}
+      </AppText>
+      <AppText variant="bodyStrong">{props.value}</AppText>
+    </View>
+  );
+}
+
 export default function ActivityScreen() {
   const router = useRouter();
+  const t = useTheme();
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id?: string }>();
   const editId = id ? Number(id) : null;
 
@@ -81,8 +95,7 @@ export default function ActivityScreen() {
 
   function recompute(nextMet: number | null, nextSpm: number | null, minutesText: string) {
     const m = Number(minutesText.trim());
-    const valid = Number.isInteger(m) && m >= 1 && m <= 600;
-    if (!valid) return;
+    if (!(Number.isInteger(m) && m >= 1 && m <= 600)) return;
     if (nextMet !== null && body) setKcal(String(suggestActivityKcal(nextMet, body.weightKg, m)));
     if (nextSpm !== null) setStepsText(String(suggestStepsCounted(nextSpm, m)));
   }
@@ -96,9 +109,9 @@ export default function ActivityScreen() {
     recompute(p.met, nextSpm, minutes);
   }
 
-  function onMinutes(t: string) {
-    setMinutes(t);
-    recompute(met, spm, t);
+  function onMinutes(text: string) {
+    setMinutes(text);
+    recompute(met, spm, text);
   }
 
   async function onSave() {
@@ -136,45 +149,36 @@ export default function ActivityScreen() {
     ]);
   }
 
-  // Live explanation of what this session adds to the food budget.
   const kcalNum = Number(kcal.trim().replace(',', '.'));
   const stepsNum = stepsText.trim() === '' ? 0 : Number(stepsText.replace(/[,\s]/g, ''));
-  let preview: string | null = null;
-  if (body && Number.isFinite(kcalNum) && kcalNum > 0 && Number.isFinite(stepsNum) && stepsNum >= 0) {
-    const kps = kcalPerStep(body.weightKg, body.heightCm);
-    const covered = stepsNum * kps;
-    const bonus = activityBonusKcal(kcalNum, stepsNum, kps);
-    preview = `Your watch's ${n(stepsNum)} steps from this already earn about ${n(covered)} kcal. This adds about ${n(bonus)} kcal beyond your steps, and half of that, ${n(bonus * ACTIVITY_CREDIT)} kcal, goes to your food budget.`;
-  }
+  const preview =
+    body && Number.isFinite(kcalNum) && kcalNum > 0 && Number.isFinite(stepsNum) && stepsNum >= 0
+      ? activityPreview(kcalNum, stepsNum, kcalPerStep(body.weightKg, body.heightCm))
+      : null;
 
   return (
     <ScrollView
-      style={{ backgroundColor: colors.bg }}
-      contentContainerStyle={s.page}
+      style={{ flex: 1, backgroundColor: t.bg }}
+      contentContainerStyle={{
+        paddingHorizontal: 24,
+        paddingTop: insets.top + 16,
+        paddingBottom: insets.bottom + 32,
+        gap: 18,
+      }}
       keyboardShouldPersistTaps="handled"
     >
-      <Text style={s.title}>{editId !== null ? 'Edit activity' : 'Log activity'}</Text>
-      <Text style={s.note}>
-        Keep typing your watch's full step count as usual. Your watch also counts steps during
-        sessions like football, so this screen subtracts what those steps already earn, and the same
-        effort is never counted twice.
-      </Text>
+      <AppText variant="title">{editId !== null ? 'Edit activity' : 'Log activity'}</AppText>
+      <AppText variant="small" tone="muted">
+        Keep typing your watch's full step count as usual. Steps counted during a session are
+        subtracted below, so nothing is counted twice.
+      </AppText>
 
       <View style={{ gap: 8 }}>
-        <Text style={s.label}>Type</Text>
-        <View style={s.chips}>
-          {ACTIVITY_PRESETS.map((p) => {
-            const active = presetKey === p.key;
-            return (
-              <Pressable
-                key={p.key}
-                onPress={() => onPreset(p)}
-                style={[s.chip, active ? s.chipActive : null]}
-              >
-                <Text style={[s.chipText, active ? s.chipTextActive : null]}>{p.name}</Text>
-              </Pressable>
-            );
-          })}
+        <AppText variant="label">Type</AppText>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          {ACTIVITY_PRESETS.map((p) => (
+            <Chip key={p.key} label={p.name} selected={presetKey === p.key} onPress={() => onPreset(p)} />
+          ))}
         </View>
       </View>
 
@@ -206,86 +210,66 @@ export default function ActivityScreen() {
         error={errors.stepsCounted}
         hint="A rough guess is filled in. To calibrate, note your watch count at the start and end once."
       />
-      {preview ? <Text style={s.preview}>{preview}</Text> : null}
+
+      {preview ? (
+        <Card style={{ gap: 10 }}>
+          <AppText variant="label" tone="muted">
+            What this adds
+          </AppText>
+          <PreviewRow label="Your steps already earn" value={`${n(preview.coveredKcal)} kcal`} />
+          <PreviewRow label="Burned beyond your steps" value={`${n(preview.bonusKcal)} kcal`} />
+          <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: t.border }} />
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <AppText variant="h2">Added to food budget</AppText>
+            <AppText variant="number" tone="accent">
+              +{n(preview.creditKcal)}
+            </AppText>
+          </View>
+          <AppText variant="caption" tone="muted">
+            Half of the extra is credited, because calorie estimates tend to run high.
+          </AppText>
+        </Card>
+      ) : null}
+
       <Field
         label="Date"
         keyboardType="number-pad"
         value={date}
-        onChangeText={(t) => setDate(formatDateInput(t))}
+        onChangeText={(v) => setDate(formatDateInput(v))}
         error={errors.date}
       />
 
-      {saveError ? <Text style={s.saveError}>Could not save: {saveError}</Text> : null}
-      <PrimaryButton
-        title={editId !== null ? 'Save changes' : 'Save activity'}
-        onPress={onSave}
-        disabled={saving}
-      />
-      <SecondaryButton title="Cancel" onPress={() => router.back()} />
-      {editId !== null ? <SecondaryButton title="Delete" danger onPress={onDelete} /> : null}
+      {saveError ? (
+        <AppText variant="small" tone="danger">
+          Could not save: {saveError}
+        </AppText>
+      ) : null}
+
+      <View style={{ gap: 10 }}>
+        <Button
+          title={editId !== null ? 'Save changes' : 'Save activity'}
+          onPress={onSave}
+          disabled={saving}
+        />
+        <Button title="Cancel" variant="secondary" onPress={() => router.back()} />
+        {editId !== null ? <Button title="Delete" variant="danger" onPress={onDelete} /> : null}
+      </View>
 
       {editId === null && recent.length > 0 ? (
-        <View style={{ gap: 4, marginTop: 8 }}>
-          <Text style={s.label}>Recent sessions (tap to edit)</Text>
-          {recent.map((a) => (
-            <Pressable
+        <Card>
+          <AppText variant="h2">Recent sessions</AppText>
+          {recent.map((a, i) => (
+            <ListRow
               key={a.id}
-              style={s.row}
+              title={a.name}
+              subtitle={`${formatShort(a.date, true)}${a.durationMin ? ` · ${a.durationMin} min` : ''}`}
+              right={`${a.kcal} kcal`}
+              last={i === recent.length - 1}
               onPress={() => router.push({ pathname: '/activity', params: { id: String(a.id) } })}
-            >
-              <View style={{ flex: 1 }}>
-                <Text style={s.rowName}>{a.name}</Text>
-                <Text style={s.rowSub}>
-                  {formatShort(a.date, true)}
-                  {a.durationMin ? ` · ${a.durationMin} min` : ''}
-                </Text>
-              </View>
-              <Text style={s.rowKcal}>{a.kcal} kcal</Text>
-            </Pressable>
+            />
           ))}
-        </View>
+        </Card>
       ) : null}
     </ScrollView>
   );
 }
-
-const s = StyleSheet.create({
-  page: { padding: 24, paddingTop: 64, paddingBottom: 48, gap: 14 },
-  title: { fontSize: 26, fontWeight: '700', color: colors.text },
-  note: { fontSize: 13, color: colors.muted, lineHeight: 19 },
-  label: { fontSize: 14, fontWeight: '600', color: colors.text },
-  preview: {
-    fontSize: 13,
-    color: colors.text,
-    lineHeight: 19,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 10,
-    padding: 12,
-  },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.card,
-  },
-  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipText: { fontSize: 14, color: colors.text },
-  chipTextActive: { color: '#FFFFFF', fontWeight: '600' },
-  saveError: { color: colors.danger, fontSize: 13 },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
-  },
-  rowName: { fontSize: 15, color: colors.text },
-  rowSub: { fontSize: 12, color: colors.muted, marginTop: 1 },
-  rowKcal: { fontSize: 14, fontWeight: '600', color: colors.text },
-});
