@@ -9,12 +9,12 @@ import {
 } from 'react';
 import { useColorScheme } from 'react-native';
 import { getKv, setKv } from '../db/repo';
+import { LoadingScreen } from './LoadingScreen';
 import { dark, light, type Mode, type Palette } from './tokens';
 
 export type ThemePreference = 'system' | 'light' | 'dark';
 
-// Stays 'light' until every screen is redesigned (R9), then becomes 'system'.
-const DEFAULT_PREFERENCE: ThemePreference = 'light';
+const DEFAULT_PREFERENCE: ThemePreference = 'system';
 
 interface ThemeValue {
   theme: Palette;
@@ -31,11 +31,15 @@ const Ctx = createContext<ThemeValue>({
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const system = useColorScheme();
   const [preference, setPref] = useState<ThemePreference>(DEFAULT_PREFERENCE);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    getKv('theme').then((v) => {
-      if (v === 'system' || v === 'light' || v === 'dark') setPref(v);
-    });
+    getKv('theme')
+      .then((v) => {
+        if (v === 'system' || v === 'light' || v === 'dark') setPref(v);
+      })
+      .catch(() => undefined)
+      .finally(() => setLoaded(true));
   }, []);
 
   const setPreference = useCallback((p: ThemePreference) => {
@@ -48,16 +52,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     () => ({ theme: mode === 'dark' ? dark : light, preference, setPreference }),
     [mode, preference, setPreference],
   );
-  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
-}
 
-/** Renders children in a fixed theme without touching the saved preference. */
-export function ThemeOverride({ mode, children }: { mode: Mode; children: ReactNode }) {
-  const outer = useContext(Ctx);
-  const value = useMemo(
-    () => ({ ...outer, theme: mode === 'dark' ? dark : light }),
-    [outer, mode],
-  );
+  if (!loaded) return <LoadingScreen />;
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 

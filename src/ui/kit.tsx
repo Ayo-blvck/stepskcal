@@ -1,6 +1,14 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { ChevronLeft, type LucideIcon } from 'lucide-react-native';
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
+import Animated, {
+  Easing,
+  useAnimatedProps,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import {
   Pressable,
   StyleSheet,
@@ -24,6 +32,7 @@ export function AppText({
   variant = 'body',
   tone = 'default',
   style,
+  maxFontSizeMultiplier,
   ...rest
 }: TextProps & { variant?: TextVariant; tone?: TextTone }) {
   const t = useTheme();
@@ -36,7 +45,7 @@ export function AppText({
     onHeroMuted: t.onHeroMuted,
     danger: t.danger,
   };
-  return <Text {...rest} style={[typography[variant], { color: color[tone] }, style]} />;
+  return <Text {...rest}  maxFontSizeMultiplier={maxFontSizeMultiplier ?? 1.4} style={[typography[variant], { color: color[tone] }, style]} />;
 }
 
 // ---------- surfaces ----------
@@ -215,20 +224,33 @@ export function Toggle(props: { value: boolean; onValueChange: (v: boolean) => v
 
 // ---------- progress ----------
 
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+
 export function ProgressBar(props: { value: number; color?: string; height?: number }) {
   const t = useTheme();
+  const reduceMotion = useReducedMotion();
   const height = props.height ?? 10;
-  const v = Math.max(0, Math.min(1, props.value));
+  const target = Math.max(0, Math.min(1, props.value));
+  const progress = useSharedValue(reduceMotion ? target : 0);
+
+  useEffect(() => {
+    progress.set(
+      reduceMotion ? target : withTiming(target, { duration: 600, easing: Easing.out(Easing.cubic) }),
+    );
+  }, [target, reduceMotion, progress]);
+
+  const fill = useAnimatedStyle(() => ({
+    width: `${progress.get() * 100}%`,
+    opacity: progress.get() > 0.001 ? 1 : 0,
+  }));
+
   return (
     <View style={{ height, borderRadius: height / 2, backgroundColor: t.border, overflow: 'hidden' }}>
-      <View
-        style={{
-          width: `${v * 100}%`,
-          minWidth: v > 0 ? height : 0,
-          height,
-          borderRadius: height / 2,
-          backgroundColor: props.color ?? t.accent,
-        }}
+      <Animated.View
+        style={[
+          { minWidth: height, height, borderRadius: height / 2, backgroundColor: props.color ?? t.accent },
+          fill,
+        ]}
       />
     </View>
   );
@@ -242,10 +264,24 @@ export function Ring(props: {
   track?: string;
 }) {
   const t = useTheme();
+  const reduceMotion = useReducedMotion();
   const r = (props.size - props.stroke) / 2;
   const c = 2 * Math.PI * r;
   const mid = props.size / 2;
-  const p = Math.max(0, Math.min(1, props.progress));
+  const target = Math.max(0, Math.min(1, props.progress));
+  const progress = useSharedValue(reduceMotion ? target : 0);
+
+  useEffect(() => {
+    progress.set(
+      reduceMotion ? target : withTiming(target, { duration: 700, easing: Easing.out(Easing.cubic) }),
+    );
+  }, [target, reduceMotion, progress]);
+
+  const animatedProps = useAnimatedProps(() => ({
+    strokeDashoffset: c * (1 - progress.get()),
+    strokeOpacity: progress.get() > 0.001 ? 1 : 0,
+  }));
+
   return (
     <Svg width={props.size} height={props.size}>
       <Circle
@@ -256,19 +292,18 @@ export function Ring(props: {
         strokeWidth={props.stroke}
         fill="none"
       />
-      {p > 0 ? (
-        <Circle
-          cx={mid}
-          cy={mid}
-          r={r}
-          stroke={props.color}
-          strokeWidth={props.stroke}
-          fill="none"
-          strokeLinecap="round"
-          strokeDasharray={`${c * p} ${c}`}
-          transform={`rotate(-90 ${mid} ${mid})`}
-        />
-      ) : null}
+      <AnimatedCircle
+        cx={mid}
+        cy={mid}
+        r={r}
+        stroke={props.color}
+        strokeWidth={props.stroke}
+        fill="none"
+        strokeLinecap="round"
+        strokeDasharray={`${c} ${c}`}
+        animatedProps={animatedProps}
+        transform={`rotate(-90 ${mid} ${mid})`}
+      />
     </Svg>
   );
 }

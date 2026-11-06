@@ -17,7 +17,8 @@ export function Field(props: {
   return (
     <View style={{ gap: 6 }}>
       <AppText variant="label">{props.label}</AppText>
-      <TextInput
+      <TextInput 
+        maxFontSizeMultiplier={1.4}
         style={{
           borderWidth: 1,
           borderColor: props.error ? t.danger : t.border,

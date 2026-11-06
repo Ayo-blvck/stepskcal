@@ -92,7 +92,7 @@ export function TabBar({ state }: BottomTabBarProps) {
         style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 3 }}
       >
         <tab.Icon size={24} color={color} strokeWidth={focused ? 2.4 : 2} />
-        <Text style={{ fontFamily: focused ? font.bold : font.semibold, fontSize: 12, color }}>
+        <Text maxFontSizeMultiplier={1.1} style={{ fontFamily: focused ? font.bold : font.semibold, fontSize: 12, color }}>
           {tab.label}
         </Text>
       </Pressable>
