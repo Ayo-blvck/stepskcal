@@ -90,7 +90,7 @@ export default function LogPicker() {
           <SecondaryButton
             title="Add it as a new food"
             onPress={() =>
-              router.push({ pathname: '/foods/edit', params: { name: query.trim() } })
+              router.push({ pathname: '/library/edit', params: { name: query.trim() } })
             }
           />
         </View>

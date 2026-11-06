@@ -10,18 +10,18 @@ import {
   type GoalTier,
   type ReminderSettings,
   type Spice,
-} from '../core';
-import { getReminderContext } from '../db/repo';
-import { dateKey } from '../lib/dates';
+} from '../../core';
+import { getReminderContext } from '../../db/repo';
+import { dateKey } from '../../lib/dates';
 import {
   applyReminders,
   ensurePermission,
   loadReminderSettings,
   saveReminderSettings,
   scheduleTest,
-} from '../lib/notifications';
-import { Field, PrimaryButton, SecondaryButton, Segmented } from '../ui/form';
-import { colors } from '../ui/theme';
+} from '../../lib/notifications';
+import { Field, PrimaryButton, SecondaryButton, Segmented } from '../../ui/form';
+import { colors } from '../../ui/theme';
 
 type Key = 'morning' | 'evening' | 'weighIn';
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];

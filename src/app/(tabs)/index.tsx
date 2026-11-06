@@ -6,16 +6,16 @@ import {
   goalOutlook,
   type GoalOutlook,
   type GoalVerdict,
-} from '../core';
-import { getDayPlan, getProfile, latestWeight, listFoodLogs, type DayPlanView } from '../db/repo';
-import type { FoodLog, Profile } from '../db/schema';
-import { dateKey, parseDateKey } from '../lib/dates';
-import { PrimaryButton, SecondaryButton } from '../ui/form';
-import { colors } from '../ui/theme';
-import { StepsCard } from '../ui/StepsCard';
-import { ActivityCard } from '../ui/ActivityCard';
-import { BackupNudge } from '../ui/BackupNudge';
-import { refreshReminders } from '../lib/notifications';
+} from '../../core';
+import { getDayPlan, getProfile, latestWeight, listFoodLogs, type DayPlanView } from '../../db/repo';
+import type { FoodLog, Profile } from '../../db/schema';
+import { dateKey, parseDateKey } from '../../lib/dates';
+import { PrimaryButton, SecondaryButton } from '../../ui/form';
+import { colors } from '../../ui/theme';
+import { StepsCard } from '../../ui/StepsCard';
+import { ActivityCard } from '../../ui/ActivityCard';
+import { BackupNudge } from '../../ui/BackupNudge';
+import { refreshReminders } from '../../lib/notifications';
 
 type State =
   | { status: 'loading' }
@@ -132,7 +132,7 @@ export default function Home() {
         phone={plan.phoneSteps}
       />
 
-      <PrimaryButton title="Log food" onPress={() => router.push('/log')} />
+      <PrimaryButton title="Log food" onPress={() => router.push('/foods')} />
 
       <Card
         label="Food today"
@@ -171,8 +171,8 @@ export default function Home() {
         value={`${weightKg} kg → ${profile.goalWeightKg} kg`}
         note={`${daysLeft !== null ? `${daysLeft} days to ${profile.targetDate}.\n\n` : ''}${goalNote}`}
       />
-      <SecondaryButton title="Weight and progress" onPress={() => router.push('/weight')} />
-      <SecondaryButton title="Food library" onPress={() => router.push('/foods')} />
+      <SecondaryButton title="Weight and progress" onPress={() => router.push('/progress')} />
+      <SecondaryButton title="Food library" onPress={() => router.push('/library')} />
       <SecondaryButton title="Edit profile" onPress={() => router.push('/onboarding')} />
       <SecondaryButton title="Backup and restore" onPress={() => router.push('/backup')} />
       <SecondaryButton title="Reminders" onPress={() => router.push('/reminders')} />

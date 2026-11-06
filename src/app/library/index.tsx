@@ -60,7 +60,7 @@ export default function FoodLibrary() {
       renderItem={({ item }) => (
         <Pressable
           style={s.row}
-          onPress={() => router.push({ pathname: '/foods/edit', params: { id: String(item.id) } })}
+          onPress={() => router.push({ pathname: '/library/edit', params: { id: String(item.id) } })}
         >
           <View style={{ flex: 1 }}>
             <Text style={s.name}>
@@ -79,7 +79,7 @@ export default function FoodLibrary() {
         <View style={s.footer}>
           <PrimaryButton
             title="Add a food"
-            onPress={() => router.push({ pathname: '/foods/edit', params: { name: query.trim() } })}
+            onPress={() => router.push({ pathname: '/library/edit', params: { name: query.trim() } })}
           />
         </View>
       }

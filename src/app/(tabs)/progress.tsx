@@ -10,13 +10,13 @@ import {
   weightStats,
   type WeightEntry,
   type WeightErrors,
-} from '../core';
-import { deleteWeight, getProfile, listWeights, logWeight, setMode } from '../db/repo';
-import type { Profile } from '../db/schema';
-import { dateKey, formatShort } from '../lib/dates';
-import { Field, PrimaryButton, SecondaryButton } from '../ui/form';
-import { colors } from '../ui/theme';
-import { WeightChart } from '../ui/WeightChart';
+} from '../../core';
+import { deleteWeight, getProfile, listWeights, logWeight, setMode } from '../../db/repo';
+import type { Profile } from '../../db/schema';
+import { dateKey, formatShort } from '../../lib/dates';
+import { Field, PrimaryButton, SecondaryButton } from '../../ui/form';
+import { colors } from '../../ui/theme';
+import { WeightChart } from '../../ui/WeightChart';
 
 const kg1 = (x: number) => x.toFixed(1);
 const signed = (x: number) => `${x > 0 ? '+' : x < 0 ? '−' : ''}${Math.abs(x).toFixed(1)}`;
