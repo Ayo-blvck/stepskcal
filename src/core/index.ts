@@ -16,3 +16,4 @@ export * from './activity';
 export * from './backup';
 export * from './reminderSettings';
 export * from './reminders';
+export * from './todayView';

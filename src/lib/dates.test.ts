@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatShort, shiftDateKey } from './dates';
+import { formatDayHeading, formatShort, shiftDateKey } from './dates';
 
 describe('shiftDateKey', () => {
   it('moves across month and year boundaries', () => {
@@ -13,5 +13,12 @@ describe('formatShort', () => {
   it('formats with and without the year', () => {
     expect(formatShort('2027-05-07')).toBe('7 May');
     expect(formatShort('2027-05-07', true)).toBe('7 May 2027');
+  });
+});
+
+describe('formatDayHeading', () => {
+  it('writes the weekday and date', () => {
+    expect(formatDayHeading('2026-11-04')).toBe('Wednesday, 4 Nov');
+    expect(formatDayHeading('2027-05-07')).toBe('Friday, 7 May');
   });
 });

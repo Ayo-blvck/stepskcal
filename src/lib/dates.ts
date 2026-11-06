@@ -21,3 +21,9 @@ export function formatShort(key: string, withYear = false): string {
   const [y, m, d] = key.split('-').map(Number);
   return `${d} ${MONTHS[m - 1]}${withYear ? ` ${y}` : ''}`;
 }
+
+const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+export function formatDayHeading(key: string): string {
+  return `${WEEKDAY_NAMES[parseDateKey(key).getDay()]}, ${formatShort(key)}`;
+}

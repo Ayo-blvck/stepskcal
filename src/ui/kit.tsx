@@ -91,6 +91,7 @@ export function Button(props: {
   variant?: ButtonVariant;
   icon?: LucideIcon;
   disabled?: boolean;
+  pill?: boolean;
   size?: 'md' | 'sm';
   style?: StyleProp<ViewStyle>;
 }) {
@@ -114,7 +115,7 @@ export function Button(props: {
       style={({ pressed }) => [
         {
           minHeight: small ? 40 : 52,
-          borderRadius: radius.button,
+          borderRadius: props.pill ? radius.pill : radius.button,
           paddingHorizontal: 18,
           flexDirection: 'row',
           alignItems: 'center',
@@ -288,15 +289,20 @@ export function RingStat(props: {
         <View style={{ position: 'absolute' }}>
           <Ring size={size} stroke={Math.round(size * 0.1)} progress={props.progress} color={props.color} />
         </View>
-        <AppText variant="number" tone="onHero" style={{ fontSize: Math.round(size * 0.19) }}>
+        <AppText
+          variant="number"
+          tone="onHero"
+          maxFontSizeMultiplier={1.15}
+          style={{ fontSize: Math.round(size * 0.19), lineHeight: Math.round(size * 0.24) }}
+        >
           {props.value}
         </AppText>
-        <AppText variant="caption" tone="onHeroMuted">
+        <AppText variant="caption" tone="onHeroMuted" maxFontSizeMultiplier={1.15}>
           {props.label}
         </AppText>
       </View>
       {props.sub ? (
-        <AppText variant="small" tone="onHeroMuted">
+        <AppText variant="small" tone="onHeroMuted" maxFontSizeMultiplier={1.15}>
           {props.sub}
         </AppText>
       ) : null}

@@ -1,59 +1,65 @@
 import { Redirect, useFocusEffect, useRouter } from 'expo-router';
+import { Moon, Smartphone, Sun } from 'lucide-react-native';
 import { useCallback, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, useWindowDimensions, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
+  buildTodayView,
   formatQuantity,
-  goalOutlook,
-  type GoalOutlook,
-  type GoalVerdict,
+  goalCardView,
+  weightStats,
+  type WeightEntry,
 } from '../../core';
-import { getDayPlan, getProfile, latestWeight, listFoodLogs, type DayPlanView } from '../../db/repo';
-import type { FoodLog, Profile } from '../../db/schema';
-import { dateKey, parseDateKey } from '../../lib/dates';
-import { PrimaryButton, SecondaryButton } from '../../ui/form';
-import { colors } from '../../ui/theme';
-import { StepsCard } from '../../ui/StepsCard';
+import {
+  getDayPlan,
+  getProfile,
+  listActivities,
+  listFoodLogs,
+  listWeights,
+  type DayPlanView,
+} from '../../db/repo';
+import type { Activity, FoodLog, Profile } from '../../db/schema';
+import { dateKey, formatDayHeading } from '../../lib/dates';
+import { refreshReminders } from '../../lib/notifications';
 import { ActivityCard } from '../../ui/ActivityCard';
 import { BackupNudge } from '../../ui/BackupNudge';
-import { refreshReminders } from '../../lib/notifications';
+import {
+  AppText,
+  Button,
+  Card,
+  HeroCard,
+  IconButton,
+  ListRow,
+  ProgressBar,
+  RingStat,
+} from '../../ui/kit';
+import { useTheme, useThemePreference, type ThemePreference } from '../../ui/ThemeProvider';
 
 type State =
   | { status: 'loading' }
   | { status: 'none' }
-  | { status: 'ready'; plan: DayPlanView; profile: Profile; weightKg: number; logs: FoodLog[] };
+  | {
+      status: 'ready';
+      today: string;
+      plan: DayPlanView;
+      profile: Profile;
+      logs: FoodLog[];
+      activities: Activity[];
+      weights: WeightEntry[];
+    };
 
-const VERDICT: Record<GoalVerdict, string> = {
-  reached: 'Reached',
-  on_track: 'On track',
-  tight: 'Tight but possible',
-  behind: 'Behind pace',
+const NEXT_THEME: Record<ThemePreference, ThemePreference> = {
+  light: 'dark',
+  dark: 'system',
+  system: 'light',
 };
 
-const n = (x: number) => x.toLocaleString('en-US');
-
-function outlookText(label: string, o: GoalOutlook): string {
-  if (o.verdict === 'reached') return `${label}: reached.`;
-  const need =
-    o.requiredDailyKcal === null
-      ? 'no target date set'
-      : `needs ${o.requiredDailyKcal} kcal/day by your target date`;
-  const weeks = o.daysNeeded ? `, about ${Math.ceil(o.daysNeeded / 7)} weeks at your planned pace` : '';
-  return `${label} (${o.kgToLose.toFixed(1)} kg to go): ${VERDICT[o.verdict]}. ${need}${weeks}.`;
-}
-
-function Card(props: { label: string; value: string; note?: string; children?: React.ReactNode }) {
-  return (
-    <View style={s.card}>
-      <Text style={s.cardLabel}>{props.label}</Text>
-      <Text style={s.cardValue}>{props.value}</Text>
-      {props.note ? <Text style={s.cardNote}>{props.note}</Text> : null}
-      {props.children}
-    </View>
-  );
-}
-
-export default function Home() {
+export default function Today() {
   const router = useRouter();
+  const t = useTheme();
+  const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const { preference, setPreference } = useThemePreference();
   const [state, setState] = useState<State>({ status: 'loading' });
 
   useFocusEffect(
@@ -61,14 +67,25 @@ export default function Home() {
       let active = true;
       (async () => {
         const today = dateKey();
-        const profile = await getProfile();
-        const weight = await latestWeight();
-        const plan = await getDayPlan(today);
-        const logs = await listFoodLogs(today);
+        const [profile, plan, logs, activities, weights] = await Promise.all([
+          getProfile(),
+          getDayPlan(today),
+          listFoodLogs(today),
+          listActivities(today),
+          listWeights(),
+        ]);
         if (!active) return;
         setState(
-          profile && weight && plan
-            ? { status: 'ready', plan, profile, weightKg: weight.weightKg, logs }
+          profile && plan && weights.length > 0
+            ? {
+                status: 'ready',
+                today,
+                plan,
+                profile,
+                logs,
+                activities,
+                weights: weights.map((w) => ({ date: w.date, kg: w.weightKg })),
+              }
             : { status: 'none' },
         );
         refreshReminders();
@@ -79,131 +96,168 @@ export default function Home() {
     }, []),
   );
 
-  if (state.status === 'loading') return null;
+  if (state.status === 'loading') return <View style={{ flex: 1, backgroundColor: t.bg }} />;
   if (state.status === 'none') return <Redirect href="/onboarding" />;
 
-  const { plan, profile, weightKg, logs } = state;
-  const today = parseDateKey(dateKey());
-  const daysLeft = profile.targetDate
-    ? Math.round((parseDateKey(profile.targetDate).getTime() - today.getTime()) / 86400000)
+  const { today, plan, profile, logs, activities, weights } = state;
+  const eaten = logs.reduce((sum, l) => sum + l.kcal, 0);
+
+  const view = buildTodayView({
+    stepsDone: plan.stepsDone,
+    stepTarget: plan.stepTarget,
+    stepFloor: profile.stepFloor,
+    stepCap: profile.stepCap,
+    hasSteps: plan.watchSteps !== null || plan.phoneSteps !== null,
+    eatenKcal: eaten,
+    budgetKcal: plan.budgetKcal,
+    activityCreditKcal: plan.activityCreditKcal,
+    overageKcal: plan.overageKcal,
+    uncoveredKcal: plan.uncoveredKcal,
+  });
+
+  const stats = weightStats(weights, {
+    goalKg: profile.goalWeightKg,
+    targetDate: profile.targetDate,
+    today,
+  });
+  const goal = stats
+    ? goalCardView({
+        startKg: stats.startKg,
+        currentKg: stats.currentKg,
+        goalKg: profile.goalWeightKg,
+        targetDate: profile.targetDate,
+        today,
+        vsPlanKg: stats.vsPlanKg,
+        mode: profile.mode,
+      })
     : null;
 
-  const outlookBase = {
-    weightKg,
-    daysLeft,
-    deficitKcal: plan.effectiveDeficitKcal,
-    stepFloor: profile.stepFloor,
-    kcalPerStep: plan.kcalPerStep,
-  };
-  const main = goalOutlook({ ...outlookBase, goalKg: profile.goalWeightKg });
-  const stretch =
-    profile.stretchGoalKg != null
-      ? goalOutlook({ ...outlookBase, goalKg: profile.stretchGoalKg })
-      : null;
-  const goalNote = [outlookText('Goal', main), stretch ? outlookText('Stretch', stretch) : null]
-    .filter(Boolean)
-    .join('\n\n');
-
-  const eaten = logs.reduce((sum, l) => sum + l.kcal, 0);
-  const extraSteps = Math.max(0, plan.stepTarget - profile.stepFloor);
-
-  let stepNote: string;
-  if (plan.overageKcal > 0) {
-    stepNote = `+${n(extraSteps)} steps from eating ${n(plan.overageKcal)} kcal over budget.`;
-    if (plan.uncoveredKcal > 0) {
-      stepNote += ` The cap is ${n(profile.stepCap)} steps, so about ${n(plan.uncoveredKcal)} kcal can't be walked off today. Accept it and stay on plan tomorrow.`;
-    }
-  } else {
-    stepNote = `You are within budget, so you only need your floor of ${n(profile.stepFloor)} steps.`;
-  }
-
-  const left = plan.remainingKcal;
+  const ringSize = Math.max(100, Math.min(144, Math.floor((width - 88 - 16) / 2)));
+  const ThemeIcon = preference === 'dark' ? Moon : preference === 'system' ? Smartphone : Sun;
 
   return (
-    <ScrollView style={{ backgroundColor: colors.bg }} contentContainerStyle={s.page}>
-      <Text style={s.title}>Today</Text>
+    <ScrollView
+      style={{ flex: 1, backgroundColor: t.bg }}
+      contentContainerStyle={{
+        paddingHorizontal: 24,
+        paddingTop: insets.top + 16,
+        paddingBottom: 32,
+        gap: 14,
+      }}
+    >
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <View>
+          <AppText variant="small" tone="muted">
+            {formatDayHeading(today)}
+          </AppText>
+          <AppText variant="title">Today</AppText>
+        </View>
+        <IconButton
+          icon={ThemeIcon}
+          label={`Theme: ${preference}. Tap to change`}
+          onPress={() => setPreference(NEXT_THEME[preference])}
+        />
+      </View>
+
       <BackupNudge profileCreatedAt={profile.createdAt} />
 
-      <Card label="Step target" value={`${n(plan.stepTarget)} steps`} note={stepNote} />
-      <StepsCard
-        done={plan.stepsDone}
-        target={plan.stepTarget}
-        watch={plan.watchSteps}
-        phone={plan.phoneSteps}
-      />
+      <HeroCard>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+          <RingStat
+            size={ringSize}
+            value={view.steps.value}
+            label={view.steps.label}
+            sub={view.steps.sub}
+            progress={view.steps.progress}
+            color={t.lime}
+          />
+          <RingStat
+            size={ringSize}
+            value={view.kcal.value}
+            label={view.kcal.label}
+            sub={view.kcal.sub}
+            progress={view.kcal.progress}
+            color={t.amber}
+          />
+        </View>
+        <View style={{ backgroundColor: t.heroPanel, borderRadius: 16, padding: 14, marginTop: 16 }}>
+          <AppText tone="onHero">{view.note}</AppText>
+        </View>
+      </HeroCard>
 
-      <PrimaryButton title="Log food" onPress={() => router.push('/foods')} />
+      <View style={{ flexDirection: 'row', gap: 10 }}>
+        <Button
+          title="Update steps"
+          variant="secondary"
+          pill
+          onPress={() => router.push('/steps')}
+          style={{ flex: 1 }}
+        />
+        <Button
+          title="Log activity"
+          variant="secondary"
+          pill
+          onPress={() => router.push('/activity')}
+          style={{ flex: 1 }}
+        />
+      </View>
 
-      <Card
-        label="Food today"
-        value={left >= 0 ? `${n(left)} kcal left` : `${n(-left)} kcal over`}
-        note={`Eaten ${n(eaten)} of ${n(plan.budgetKcal + plan.activityCreditKcal)} kcal${plan.activityCreditKcal > 0 ? ` (budget ${n(plan.budgetKcal)} + ${n(plan.activityCreditKcal)} from activity)` : ' budget'}. Maintenance is ${n(plan.maintenanceKcal)} kcal minus a ${plan.effectiveDeficitKcal} kcal deficit${plan.limitedByFloor ? ' (held at the calorie floor)' : ''}.`}
-        >
-        {logs.length === 0 ? (
-          <Text style={s.cardNote}>Nothing logged yet.</Text>
-        ) : (
-          <View style={{ marginTop: 8 }}>
-            {logs.map((l) => (
-              <Pressable
-                key={l.id}
-                style={s.logRow}
-                onPress={() => router.push({ pathname: '/log/entry', params: { logId: String(l.id) } })}
-              >
-                <View style={{ flex: 1 }}>
-                  <Text style={s.logName}>{l.name}</Text>
-                  {l.servingLabel ? (
-                    <Text style={s.logSub}>
-                      {formatQuantity(l.quantity)} × {l.servingLabel}
-                    </Text>
-                  ) : null}
-                </View>
-                <Text style={s.logKcal}>{l.kcal} kcal</Text>
-              </Pressable>
-            ))}
+      {goal ? (
+        <Card>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
+            <AppText variant="h2">{goal.title}</AppText>
+            {goal.right ? (
+              <AppText variant="small" tone="muted">
+                {goal.right}
+              </AppText>
+            ) : null}
           </View>
+          <View style={{ marginVertical: 12 }}>
+            <ProgressBar value={goal.progress} />
+          </View>
+          <AppText variant="small" tone="muted">
+            {goal.detail}
+          </AppText>
+        </Card>
+      ) : null}
+
+      <Card>
+        <AppText variant="h2">Eaten today</AppText>
+        {logs.length === 0 ? (
+          <View style={{ gap: 12, marginTop: 8 }}>
+            <AppText tone="muted">Nothing logged yet.</AppText>
+            <Button title="Log your first meal" variant="dashed" onPress={() => router.push('/foods')} />
+          </View>
+        ) : (
+          logs.map((l, i) => (
+            <ListRow
+              key={l.id}
+              title={l.name}
+              subtitle={
+                l.servingLabel && l.quantity !== 1
+                  ? `${formatQuantity(l.quantity)} × ${l.servingLabel}`
+                  : undefined
+              }
+              right={`${l.kcal.toLocaleString('en-US')} kcal`}
+              last={i === logs.length - 1}
+              onPress={() =>
+                router.push({ pathname: '/log/entry', params: { logId: String(l.id) } })
+              }
+            />
+          ))
         )}
       </Card>
 
-      <ActivityCard creditKcal={plan.activityCreditKcal} />
-      
-      <Card
-        label="Goal"
-        value={`${weightKg} kg → ${profile.goalWeightKg} kg`}
-        note={`${daysLeft !== null ? `${daysLeft} days to ${profile.targetDate}.\n\n` : ''}${goalNote}`}
-      />
-      <SecondaryButton title="Weight and progress" onPress={() => router.push('/progress')} />
-      <SecondaryButton title="Food library" onPress={() => router.push('/library')} />
-      <SecondaryButton title="Edit profile" onPress={() => router.push('/onboarding')} />
-      <SecondaryButton title="Backup and restore" onPress={() => router.push('/backup')} />
-      <SecondaryButton title="Reminders" onPress={() => router.push('/reminders')} />
-      <SecondaryButton title="R1 check" onPress={() => router.push('/dev-r1')} />
+      <ActivityCard items={activities} creditKcal={plan.activityCreditKcal} />
+
+      {/* Temporary: these move into Foods (R4) and Profile & data (R8). */}
+      <AppText variant="caption" tone="muted" style={{ marginTop: 8 }}>
+        More
+      </AppText>
+      <Button title="Food library" variant="secondary" onPress={() => router.push('/library')} />
+      <Button title="Edit profile" variant="secondary" onPress={() => router.push('/onboarding')} />
+      <Button title="Backup and restore" variant="secondary" onPress={() => router.push('/backup')} />
+      <Button title="R1 check" variant="secondary" onPress={() => router.push('/dev-r1')} />
     </ScrollView>
   );
 }
-
-const s = StyleSheet.create({
-  page: { padding: 24, paddingTop: 64, paddingBottom: 48, gap: 14 },
-  title: { fontSize: 26, fontWeight: '700', color: colors.text },
-  card: {
-    backgroundColor: colors.card,
-    borderRadius: 14,
-    padding: 16,
-    gap: 4,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  cardLabel: { fontSize: 13, color: colors.muted },
-  cardValue: { fontSize: 24, fontWeight: '700', color: colors.text },
-  cardNote: { fontSize: 13, color: colors.muted, lineHeight: 19, marginTop: 4 },
-  logRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 10,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
-  },
-  logName: { fontSize: 15, color: colors.text },
-  logSub: { fontSize: 12, color: colors.muted, marginTop: 1 },
-  logKcal: { fontSize: 14, fontWeight: '600', color: colors.text },
-});

@@ -27,6 +27,8 @@ export interface Palette {
   chartLine: string;
   chartPlan: string;
   overlay: string;
+  warnBg: string;
+  warnBorder: string;
 }
 
 export const light: Palette = {
@@ -54,6 +56,8 @@ export const light: Palette = {
   chartLine: '#1B5FAA',
   chartPlan: '#9A9A92',
   overlay: 'rgba(0,0,0,0.45)',
+  warnBg: '#FFF4DE',
+  warnBorder: '#F0D9A8',
 };
 
 export const dark: Palette = {
@@ -81,6 +85,9 @@ export const dark: Palette = {
   chartLine: '#6AA6E8',
   chartPlan: '#6F7F76',
   overlay: 'rgba(0,0,0,0.6)',
+  warnBg: '#2B2412',
+  warnBorder: '#5A4A22',
+
 };
 
 export const radius = { card: 20, hero: 28, field: 16, button: 18, icon: 16, fab: 20, pill: 999 } as const;
