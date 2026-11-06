@@ -1,10 +1,12 @@
-import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useRef, useState } from 'react';
+import { Alert, ScrollView, View, type ScrollViewInstance } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   dayNumber,
   formatDateInput,
-  projectGoalDate,
+  progressSummary,
+  signedKg,
   validateWeightEntry,
   weightJumpUnlikely,
   weightStats,
@@ -14,15 +16,19 @@ import {
 import { deleteWeight, getProfile, listWeights, logWeight, setMode } from '../../db/repo';
 import type { Profile } from '../../db/schema';
 import { dateKey, formatShort } from '../../lib/dates';
-import { Field, PrimaryButton, SecondaryButton } from '../../ui/form';
-import { colors } from '../../ui/theme';
+import { Field } from '../../ui/form';
+import { AppText, Button, Card, ListRow } from '../../ui/kit';
+import { useTheme } from '../../ui/ThemeProvider';
 import { WeightChart } from '../../ui/WeightChart';
 
 const kg1 = (x: number) => x.toFixed(1);
-const signed = (x: number) => `${x > 0 ? '+' : x < 0 ? '−' : ''}${Math.abs(x).toFixed(1)}`;
 
-export default function WeightScreen() {
-  const router = useRouter();
+export default function Progress() {
+  const t = useTheme();
+  const insets = useSafeAreaInsets();
+  const scroller = useRef<ScrollViewInstance>(null);
+  const [formY, setFormY] = useState(0);
+
   const [entries, setEntries] = useState<WeightEntry[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [dateText, setDateText] = useState(dateKey());
@@ -31,6 +37,7 @@ export default function WeightScreen() {
   const [errors, setErrors] = useState<WeightErrors>({});
   const [saving, setSaving] = useState(false);
   const [showAll, setShowAll] = useState(false);
+  const [selected, setSelected] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     const [w, p] = await Promise.all([listWeights(), getProfile()]);
@@ -60,6 +67,7 @@ export default function WeightScreen() {
       await logWeight(v.date, v.kg);
       const { list, p } = await load();
       resetForm();
+      setSelected(null);
 
       const latest = list[list.length - 1];
       if (p && p.mode === 'lose' && latest && latest.kg <= p.goalWeightKg) {
@@ -114,6 +122,7 @@ export default function WeightScreen() {
     setDateText(e.date);
     setKgText(String(e.kg));
     setErrors({});
+    scroller.current?.scrollTo({ y: Math.max(0, formY - 16), animated: true });
   }
 
   function onDelete() {
@@ -127,6 +136,7 @@ export default function WeightScreen() {
           await deleteWeight(editing);
           await load();
           resetForm();
+          setSelected(null);
         },
       },
     ]);
@@ -135,11 +145,20 @@ export default function WeightScreen() {
   const today = dateKey();
   const stats =
     profile && entries.length > 0
-      ? weightStats(entries, {
-          goalKg: profile.goalWeightKg,
-          targetDate: profile.targetDate,
-          today,
-        })
+      ? weightStats(entries, { goalKg: profile.goalWeightKg, targetDate: profile.targetDate, today })
+      : null;
+  const summary =
+    stats && profile
+      ? progressSummary(
+          {
+            stats,
+            goalKg: profile.goalWeightKg,
+            stretchKg: profile.stretchGoalKg ?? null,
+            today,
+            mode: profile.mode,
+          },
+          (k) => formatShort(k, true),
+        )
       : null;
 
   const first = entries[0];
@@ -157,153 +176,143 @@ export default function WeightScreen() {
 
   const newestFirst = [...entries].reverse();
   const visible = showAll ? newestFirst : newestFirst.slice(0, 15);
-
-  let stretchLine: string | null = null;
-  if (stats && profile?.stretchGoalKg != null && stats.currentKg > profile.stretchGoalKg) {
-    const d = projectGoalDate(stats.currentKg, profile.stretchGoalKg, stats.weeklyRateKg, today);
-    if (d) stretchLine = `Stretch goal of ${profile.stretchGoalKg} kg: around ${formatShort(d, true)}.`;
-  }
+  const selectedEntry = selected !== null ? entries[selected] : undefined;
 
   return (
     <ScrollView
-      style={{ backgroundColor: colors.bg }}
-      contentContainerStyle={s.page}
+      ref={scroller}
+      style={{ flex: 1, backgroundColor: t.bg }}
+      contentContainerStyle={{
+        paddingHorizontal: 24,
+        paddingTop: insets.top + 16,
+        paddingBottom: 32,
+        gap: 14,
+      }}
       keyboardShouldPersistTaps="handled"
     >
-      <Pressable onPress={() => router.back()}>
-        <Text style={s.back}>‹ Back</Text>
-      </Pressable>
-      <Text style={s.title}>Weight and progress</Text>
+      <AppText variant="title">Progress</AppText>
 
-      {profile && stats ? (
-        <View style={s.card}>
-          <Text style={s.cardLabel}>Now</Text>
-          <Text style={s.cardValue}>{kg1(stats.currentKg)} kg</Text>
-          <Text style={s.note}>
-            Since your first weigh-in ({kg1(stats.startKg)} kg on {formatShort(stats.startDate, true)}):{' '}
-            {signed(stats.changeKg)} kg.
-          </Text>
-          <Text style={s.note}>
-            {stats.toGoalKg > 0
-              ? `${kg1(stats.toGoalKg)} kg to go to reach ${profile.goalWeightKg} kg.`
-              : `You have reached your goal of ${profile.goalWeightKg} kg.`}
-          </Text>
-          <Text style={s.note}>
-            {stats.weeklyRateKg === null
-              ? 'Pace: log a few weigh-ins across a week or more to see it.'
-              : `Pace: ${signed(stats.weeklyRateKg)} kg per week over the last 4 weeks.`}
-          </Text>
-          {stats.toGoalKg > 0 && stats.weeklyRateKg !== null ? (
-            <Text style={s.note}>
-              {stats.projectedGoalDate
-                ? `At this pace you reach ${profile.goalWeightKg} kg around ${formatShort(stats.projectedGoalDate, true)}.`
-                : 'Your weight is flat or rising, so there is no projected date yet.'}
-            </Text>
-          ) : null}
-          {stretchLine ? <Text style={s.note}>{stretchLine}</Text> : null}
-          {stats.plannedKgToday !== null && stats.vsPlanKg !== null ? (
-            <Text style={s.note}>
-              Plan for today: {kg1(stats.plannedKgToday)} kg.{' '}
-              {Math.abs(stats.vsPlanKg) < 0.1
-                ? 'You are right on the plan.'
-                : `You are ${kg1(Math.abs(stats.vsPlanKg))} kg ${stats.vsPlanKg < 0 ? 'ahead of' : 'behind'} the plan.`}
-            </Text>
-          ) : null}
-        </View>
-      ) : null}
+      {stats && summary && profile ? (
+        <>
+          <Card style={{ gap: 4 }}>
+            <AppText variant="small" tone="muted">
+              Now
+            </AppText>
+            <AppText variant="numberLg" style={{ fontSize: 46, lineHeight: 54 }}>
+              {kg1(stats.currentKg)} kg
+            </AppText>
+            <AppText variant="small" tone="muted">
+              {summary.headline}
+            </AppText>
+          </Card>
 
-      {profile && entries.length > 0 ? (
-        <View style={s.card}>
-          <WeightChart
-            points={entries.map((e) => ({ t: dayNumber(e.date), kg: e.kg }))}
-            goalKg={profile.goalWeightKg}
-            stretchKg={profile.stretchGoalKg ?? null}
-            plan={plan}
-            xMin={xMin}
-            xMax={xMax}
+          <Card>
+            <AppText variant="small" tone={selectedEntry ? 'default' : 'muted'} style={{ marginBottom: 6 }}>
+              {selectedEntry
+                ? `${formatShort(selectedEntry.date, true)} · ${kg1(selectedEntry.kg)} kg`
+                : 'Tap the chart to see a weigh-in'}
+            </AppText>
+            <WeightChart
+              points={entries.map((e) => ({ t: dayNumber(e.date), kg: e.kg }))}
+              goalKg={profile.goalWeightKg}
+              stretchKg={profile.stretchGoalKg ?? null}
+              plan={plan}
+              xMin={xMin}
+              xMax={xMax}
+              selected={selected}
+              onSelect={setSelected}
+            />
+          </Card>
+
+          <Card>
+            <AppText variant="h2">Details</AppText>
+            {summary.facts.map((f, i) => (
+              <ListRow
+                key={f.label}
+                title={f.label}
+                right={f.value}
+                last={i === summary.facts.length - 1}
+              />
+            ))}
+          </Card>
+        </>
+      ) : (
+        <Card>
+          <AppText tone="muted">No weigh-ins yet. Log your first one below.</AppText>
+        </Card>
+      )}
+
+      <View onLayout={(e) => setFormY(e.nativeEvent.layout.y)}>
+        <Card style={{ gap: 14 }}>
+          <AppText variant="h2">{editing ? 'Edit weigh-in' : 'Log a weigh-in'}</AppText>
+          <View style={{ flexDirection: 'row', gap: 12 }}>
+            <View style={{ flex: 1 }}>
+              <Field
+                label="Weight (kg)"
+                keyboardType="decimal-pad"
+                value={kgText}
+                onChangeText={setKgText}
+                error={errors.kg}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Field
+                label="Date"
+                keyboardType="number-pad"
+                value={dateText}
+                onChangeText={(v) => setDateText(formatDateInput(v))}
+                error={errors.date}
+              />
+            </View>
+          </View>
+          <AppText variant="caption" tone="muted">
+            Weigh in at the same time of day for the cleanest trend.
+          </AppText>
+          <Button
+            title={editing ? 'Save changes' : 'Save weigh-in'}
+            onPress={onSave}
+            disabled={saving}
           />
-        </View>
-      ) : null}
-
-      <View style={s.card}>
-        <Text style={s.sectionTitle}>{editing ? 'Edit weigh-in' : 'Log a weigh-in'}</Text>
-        <Field
-          label="Weight (kg)"
-          keyboardType="decimal-pad"
-          value={kgText}
-          onChangeText={setKgText}
-          error={errors.kg}
-        />
-        <Field
-          label="Date"
-          keyboardType="number-pad"
-          value={dateText}
-          onChangeText={(t) => setDateText(formatDateInput(t))}
-          error={errors.date}
-          hint="Defaults to today. Weigh in at the same time of day for the cleanest trend."
-        />
-        <PrimaryButton
-          title={editing ? 'Save changes' : 'Save weigh-in'}
-          onPress={onSave}
-          disabled={saving}
-        />
-        {editing ? (
-          <>
-            <SecondaryButton title="Cancel" onPress={resetForm} />
-            {entries.length > 1 ? (
-              <SecondaryButton title="Delete this weigh-in" danger onPress={onDelete} />
-            ) : null}
-          </>
-        ) : null}
+          {editing ? (
+            <>
+              <Button title="Cancel" variant="secondary" onPress={resetForm} />
+              {entries.length > 1 ? (
+                <Button title="Delete this weigh-in" variant="danger" onPress={onDelete} />
+              ) : null}
+            </>
+          ) : null}
+        </Card>
       </View>
 
       {entries.length > 0 ? (
-        <View style={s.card}>
-          <Text style={s.sectionTitle}>History</Text>
-          <Text style={s.note}>Tap an entry to edit it.</Text>
-          {visible.map((e) => (
-            <Pressable key={e.date} style={s.row} onPress={() => onEdit(e)}>
-              <Text style={s.rowDate}>{formatShort(e.date, true)}</Text>
-              <Text style={s.rowKg}>{kg1(e.kg)} kg</Text>
-            </Pressable>
-          ))}
+        <Card>
+          <AppText variant="h2">History</AppText>
+          <AppText variant="small" tone="muted" style={{ marginBottom: 2 }}>
+            Tap an entry to edit it.
+          </AppText>
+          {visible.map((e, i) => {
+            const older = newestFirst[i + 1];
+            return (
+              <ListRow
+                key={e.date}
+                title={formatShort(e.date, true)}
+                subtitle={older ? `${signedKg(e.kg - older.kg)} kg since previous` : 'First weigh-in'}
+                right={`${kg1(e.kg)} kg`}
+                last={i === visible.length - 1}
+                onPress={() => onEdit(e)}
+              />
+            );
+          })}
           {newestFirst.length > 15 ? (
-            <Pressable onPress={() => setShowAll((v) => !v)}>
-              <Text style={s.link}>
-                {showAll ? 'Show fewer' : `Show all ${newestFirst.length}`}
-              </Text>
-            </Pressable>
+            <Button
+              title={showAll ? 'Show fewer' : `Show all ${newestFirst.length}`}
+              variant="ghost"
+              size="sm"
+              onPress={() => setShowAll((v) => !v)}
+            />
           ) : null}
-        </View>
+        </Card>
       ) : null}
     </ScrollView>
   );
 }
-
-const s = StyleSheet.create({
-  page: { padding: 24, paddingTop: 64, paddingBottom: 48, gap: 14 },
-  back: { fontSize: 16, color: colors.primary },
-  title: { fontSize: 26, fontWeight: '700', color: colors.text },
-  card: {
-    backgroundColor: colors.card,
-    borderRadius: 14,
-    padding: 16,
-    gap: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  cardLabel: { fontSize: 13, color: colors.muted },
-  cardValue: { fontSize: 28, fontWeight: '700', color: colors.text },
-  sectionTitle: { fontSize: 17, fontWeight: '700', color: colors.text },
-  note: { fontSize: 13, color: colors.muted, lineHeight: 19 },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 10,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
-  },
-  rowDate: { fontSize: 15, color: colors.text },
-  rowKg: { fontSize: 15, fontWeight: '600', color: colors.text },
-  link: { fontSize: 14, color: colors.primary, paddingTop: 6 },
-});
