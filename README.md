@@ -1,56 +1,127 @@
-# Welcome to your Expo app 👋
+# StepsKcal
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+**Eat smart. Walk it off.**
 
-## Get started
+A personal weight-loss companion for Android. You get a daily calorie budget and a daily step target. Eat within budget and the target stays at your minimum. Go over, and the app adds the steps needed to cover it.
 
-1. Install dependencies
+Everything stays on the phone. There are no accounts, no servers and no network calls.
 
-   ```bash
-   npm install
-   ```
+## How it works
 
-2. Start the app
+- **Food budget** = maintenance calories minus a deficit (500 kcal by default). Maintenance is Mifflin-St Jeor BMR × 1.2 (sedentary). The budget never drops below 1,500 kcal for men or 1,200 kcal for women.
+- **Step target** starts at a floor (8,000 steps by default) and rises by about 2,500 steps for every 100 kcal eaten over budget, capped at 20,000. The exact cost per step is personalised from weight and height.
+- **Activity** such as football adds back half of the calories it burns beyond the steps your watch already counted, so the same effort is never counted twice.
+- **Weight** is logged over time. The app shows the trend, your pace, a projected goal date, and a comparison against a planned path to your target date.
+- **Lose and maintain modes.** After reaching the goal, the app offers to switch to maintenance and stops asking for a deficit.
 
-   ```bash
-   npx expo start
-   ```
+Calorie and step figures are estimates to guide habits, not medical advice.
 
-In the output, you'll find options to open the app in a
+## Features
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+- Today dashboard with two rings (steps to go, kcal left), a goal card and the day's log
+- About 100 pre-loaded Nigerian foods with estimated calories, plus custom foods, search and categories
+- One-tap food logging with undo, and a servings screen for custom portions
+- Manual watch step entry for today and yesterday
+- Activity log with calorie and step estimates
+- Progress screen with a weight chart, pace and history
+- Reminders: morning, evening and weekly weigh-in, with Gentle, Banter and Roast tones that soften near the goal
+- Backup and restore through a JSON file
+- Light and dark themes (system, light or dark)
 
-You can start developing by editing the files inside the **src/app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## Tech stack
 
-## Get a fresh project
+- Expo (React Native) with TypeScript and Expo Router
+- SQLite via `expo-sqlite` and Drizzle ORM, local only
+- Vitest for unit tests
+- `react-native-svg`, `react-native-reanimated`, `expo-linear-gradient`, `lucide-react-native`
+- `expo-notifications` for local reminders
+- Plus Jakarta Sans via `@expo-google-fonts/plus-jakarta-sans`
 
-When you're ready, run:
+## Project structure
 
-```bash
-npm run reset-project
+```
+src/
+  app/           Screens (Expo Router). (tabs)/ holds Today, Foods, Progress, Reminders
+  core/          Pure TypeScript logic with no React Native imports, fully unit tested
+  data/          Starter foods and reminder message lines
+  db/            SQLite schema, client and repository
+  lib/           Date and notification helpers
+  ui/            Design tokens, theme and shared components
+drizzle/         Generated database migrations (commit these)
+assets/images/   App icon, splash, adaptive icon, notification icon
+scripts/brand.js One-off script that applied the name, icons and plugins to app.json
 ```
 
-This command will move the starter code to the **example** directory and create a blank **src/app** directory where you can start developing.
+The calculation logic lives in `src/core` on purpose. Keep it free of React Native imports so it stays easy to test.
 
-### Other setup steps
+## Getting started
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+Prerequisites: Node.js LTS, Android Studio (for the SDK, platform tools and a bundled JDK), and an Android phone with USB debugging on.
 
-## Learn more
+```bash
+npm install
+npx expo run:android      # builds the native app, installs it, starts Metro
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+After the first build, day-to-day development only needs:
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+```bash
+npx expo start
+```
 
-## Join the community
+Open the installed app on the phone. It connects to Metro on your computer (same Wi-Fi, or run `adb reverse tcp:8081 tcp:8081` with the phone plugged in). You only need to rebuild when a native library is added or `app.json` changes.
 
-Join our community of developers creating universal apps.
+### Checks
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+```bash
+npm test                  # unit tests
+npx tsc --noEmit          # type check
+```
+
+If the editor flags a new route as unknown, restart `npx expo start -c` and run "TypeScript: Restart TS Server".
+
+### Database
+
+The schema is in `src/db/schema.ts`. After changing it, generate a migration and commit the new files in `drizzle/`:
+
+```bash
+npm run db:generate
+```
+
+Migrations are applied automatically when the app starts. Never edit generated migration files by hand.
+
+### Release build
+
+```bash
+npx expo run:android --variant release
+```
+
+This installs a standalone build that does not need Metro. It installs over the existing app and keeps its data. To go back to development mode, run `npx expo run:android` again.
+
+## Windows setup notes
+
+These solved real build failures:
+
+- **Keep the project path short**, for example `C:\dev\app`. Native builds create very long paths.
+- **Install the Android SDK at a path without spaces**, for example `C:\Android\Sdk`. A space in the user folder made the NDK linker run through shortened 8.3 paths and fail with undefined C++ symbols.
+- **Set the environment variables:** `ANDROID_HOME` to the SDK folder, `JAVA_HOME` to the `jbr` folder inside the Android Studio install, and add `%ANDROID_HOME%\platform-tools` to `PATH`.
+- **Enable Windows long paths** (`LongPathsEnabled` = 1 in the registry, then restart).
+- **Install CMake 3.31.6** from Android Studio's SDK Tools tab and add this line to `~/.gradle/gradle.properties`:
+  ```
+  android.cmakeVersion=3.31.6
+  ```
+  The default CMake 3.22.1 ships an old Ninja that fails on long paths.
+
+## Backups and privacy
+
+All data lives in a local SQLite database on the phone. Use **Profile & data, Backup and restore** to create a backup file and keep it somewhere outside the phone, such as Google Drive. Uninstalling the app or clearing its storage erases the data.
+
+Backup files contain health data. They are named `stepskcal-backup-*.json` and are ignored by Git. Do not commit them.
+
+## Reminders
+
+Reminders are scheduled up to 7 days ahead and refreshed every time the app is opened. The morning message reflects what you had logged at your last app open. On Xiaomi/Redmi phones, allow Autostart and set battery saver to "No restrictions" for the app, or the system may stop scheduled reminders.
+
+## Credits
+
+Developed by Ayoblvck. UI design by the StepsKcal design boards.
